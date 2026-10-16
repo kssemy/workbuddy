@@ -1,0 +1,1807 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WorkBuddy Web v0.7 Friends</title>
+<style>
+*{box-sizing:border-box}
+:root{--bg:#f6f6f6;--card:#fff;--text:#222;--muted:#777;--border:#e8e8e8;--soft:#f4f4f4;--input:#fff;--button:#222;--buttonText:#fff;--offline:#c9c9c9;--online:#59c96d;--danger:#d94949;--board:#fff}
+html[data-theme="dark"]{--bg:#171717;--card:#222;--text:#eee;--muted:#999;--border:#363636;--soft:#303030;--input:#292929;--button:#eee;--buttonText:#111;--offline:#555;--online:#63d477;--danger:#ff6b6b;--board:#fafafa}
+html,body{margin:0;background:var(--bg);color:var(--text)}
+body{font-family:Arial,"Noto Sans KR",sans-serif;font-size:8px}
+button,input,select{font:inherit;color:inherit}
+.app{width:100%;max-width:520px;margin:0 auto;padding:12px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:7px;margin-bottom:6px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:6px}.title{font-size:9px;font-weight:700}.muted{color:var(--muted);font-size:7px}
+.btn{border:0;border-radius:7px;padding:6px 8px;background:var(--button);color:var(--buttonText);cursor:pointer}.btn.secondary{background:var(--soft);color:var(--text)}.btn.danger{background:transparent;color:var(--danger);border:1px solid color-mix(in srgb,var(--danger) 35%,transparent)}
+.header-meta{display:flex;align-items:center;gap:5px;margin-top:2px}.online-count{color:var(--muted);font-size:7px}.status-dot{width:5px;height:5px;border-radius:50%;background:var(--offline);display:inline-block;flex:0 0 auto}.status-dot.online{background:var(--online)}
+.member{min-height:28px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:minmax(90px,auto) minmax(0,1fr) auto;align-items:center;gap:5px;transition:opacity .2s}.member:last-child{border-bottom:0}.member.done{opacity:.38}.member-left{display:flex;align-items:center;gap:4px;white-space:nowrap;min-width:0}.name,.state{font-size:8px;font-weight:400;color:var(--text)}
+.joined{font-size:6px;color:var(--online);white-space:nowrap}.bubble-slot{min-width:0;display:flex;justify-content:center;align-items:center;gap:3px}.bubble{max-width:100%;height:16px;line-height:16px;padding:0 6px;border-radius:8px;background:var(--soft);color:var(--muted);font-size:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}.heart{font-size:7px;white-space:nowrap;color:#d86174;cursor:pointer;user-select:none}.time-left{font-size:8px;color:var(--muted);white-space:nowrap;text-align:right}.overtime-live{color:#a76bd4}
+.survival-row{display:flex;gap:4px}.survival-row input{flex:1;min-width:0;border:1px solid var(--border);background:var(--input);border-radius:7px;padding:5px 6px}.counter{font-size:6px;color:var(--muted);margin-top:3px;text-align:right}
+.board{height:110px;border:1px solid var(--border);border-radius:8px;background:var(--board);touch-action:none;display:block;width:100%}.tools{display:flex;justify-content:space-between;align-items:center;margin-top:5px}.color-tools,.erase-tools{display:flex;align-items:center;gap:5px}.color{width:10px;height:10px;border-radius:50%;border:1px solid transparent;padding:0;cursor:pointer}.color.active{outline:1px solid var(--muted);outline-offset:1px}.icon-btn{width:20px;height:20px;border:0;border-radius:6px;background:var(--soft);padding:0;display:grid;place-items:center;cursor:pointer;font-size:10px}
+.accordion-title{display:flex;justify-content:space-between;cursor:pointer;align-items:center}.accordion-body{display:none;margin-top:7px}.accordion-body.open{display:block}.grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}label{font-size:7px;color:var(--muted);display:block;margin-bottom:3px}input[type=time],select,input[type=text]{width:100%;border:1px solid var(--border);background:var(--input);border-radius:6px;padding:5px}.save-row{display:flex;gap:4px;margin-top:7px;flex-wrap:wrap}.tiny-row{display:flex;justify-content:space-between;gap:6px;align-items:center;margin-top:5px}.weekly-value{font-size:8px}.legal-warning{color:var(--danger);font-size:7px;font-weight:700}.overtime-box{margin-top:7px;padding-top:7px;border-top:1px solid var(--border)}.overtime-live-big{font-size:9px;color:#a76bd4;margin-bottom:5px}.manual-row{display:grid;grid-template-columns:1fr 1fr auto;gap:4px;align-items:end}
+.who-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:10px;z-index:99}.who-box{background:var(--card);border-radius:11px;padding:12px;width:min(260px,100%);border:1px solid var(--border)}.who-form{display:grid;gap:6px;margin-top:8px}.who-form input,.who-form select{width:100%;border:1px solid var(--border);border-radius:7px;padding:7px;background:var(--input)}.who-actions{display:flex;gap:5px;justify-content:flex-end;margin-top:2px}
+#members{max-height:196px;overflow:auto}.error{font-size:6px;color:var(--danger);margin-top:4px}.success{font-size:6px;color:#4a9a5d;margin-top:4px}.pip-btn{white-space:nowrap}.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}#boardMsg:empty,#survivalMsg:empty,#settingsMsg:empty,#weekMsg:empty{display:none}.theme-row{margin-top:8px;padding-top:7px;border-top:1px solid var(--border)}
+@media(max-width:560px){.app{padding:8px}}
+html.pip-mode .app{width:100%;max-width:none;margin:0;padding:6px}
+html.pip-mode .pip-btn{display:none!important}
+html.pip-mode .card{border-radius:11px}
+html.pip-mode body{font-size:8px}
+html.pip-mode .member{grid-template-columns:minmax(90px,auto) minmax(0,1fr) auto;gap:5px}
+
+html.pip-mode body{font-size:11px}
+html.pip-mode .title{font-size:12px}
+html.pip-mode .muted{font-size:9px}
+html.pip-mode .name,
+html.pip-mode .state,
+html.pip-mode .time-left{font-size:10px}
+html.pip-mode .bubble{font-size:9px;height:20px;line-height:20px}
+html.pip-mode .member{height:34px;grid-template-columns:minmax(105px,auto) minmax(0,1fr) auto;gap:6px}
+html.pip-mode .card{padding:9px;margin-bottom:7px}
+html.pip-mode .btn{padding:7px 9px}
+html.pip-mode .board{height:145px}
+html.pip-mode .color{width:12px;height:12px}
+html.pip-mode .icon-btn{width:24px;height:24px;font-size:12px}
+html.pip-mode label{font-size:9px}
+html.pip-mode .counter,
+html.pip-mode .error,
+html.pip-mode .success{font-size:8px}
+
+
+/* =========================================
+   PiP MINI MODE
+   - small 340x380 window
+   - larger readable type
+   - flat / text-first UI
+========================================= */
+html.pip-mode body{
+  font-size:11px;
+  background:var(--bg);
+}
+
+html.pip-mode .app{
+  width:100%;
+  max-width:none;
+  margin:0;
+  padding:6px 8px 10px;
+}
+
+/* mini window: remove card boxes */
+html.pip-mode .card{
+  background:transparent;
+  border:0;
+  border-radius:0;
+  padding:5px 0;
+  margin:0;
+  box-shadow:none;
+}
+
+html.pip-mode .card + .card{
+  border-top:1px solid var(--border);
+}
+
+/* top */
+html.pip-mode .title{
+  font-size:12px;
+  line-height:1.2;
+}
+html.pip-mode .muted{
+  font-size:9px;
+  line-height:1.25;
+}
+html.pip-mode .btn{
+  font-size:9px;
+  padding:5px 7px;
+  border-radius:6px;
+}
+html.pip-mode .pip-btn{
+  display:none!important;
+}
+
+/* member rows */
+html.pip-mode .member{
+  height:34px;
+  grid-template-columns:minmax(105px,auto) minmax(0,1fr) auto;
+  gap:5px;
+}
+html.pip-mode .name,
+html.pip-mode .state,
+html.pip-mode .time-left{
+  font-size:10px;
+  line-height:1.2;
+}
+html.pip-mode .status-dot{
+  width:6px;
+  height:6px;
+}
+html.pip-mode .bubble{
+  height:20px;
+  line-height:20px;
+  padding:0 6px;
+  border-radius:10px;
+  font-size:9px;
+}
+
+/* survival */
+html.pip-mode .survival-row{
+  gap:5px;
+}
+html.pip-mode .survival-row input{
+  font-size:10px;
+  padding:6px 7px;
+  border-radius:6px;
+}
+html.pip-mode .counter{
+  font-size:8px;
+}
+
+/* doodle */
+html.pip-mode .section-head{
+  margin-bottom:4px;
+}
+html.pip-mode .board{
+  height:110px;
+  border-radius:6px;
+}
+html.pip-mode .tools{
+  margin-top:5px;
+}
+html.pip-mode .color{
+  width:12px;
+  height:12px;
+}
+html.pip-mode .icon-btn{
+  width:22px;
+  height:22px;
+  font-size:11px;
+}
+
+/* hide detailed work-time areas in mini window */
+html.pip-mode .pip-hide{
+  display:none!important;
+}
+
+/* hide small result messages when empty */
+html.pip-mode .error,
+html.pip-mode .success{
+  font-size:8px;
+}
+
+
+/* ===== FINAL MINI WINDOW: 260 x 410 ===== */
+html.pip-mode .app{
+  width:100%;
+  max-width:none;
+  margin:0;
+  padding:5px 7px 8px;
+}
+
+/* Hide the entire WorkBuddy / connection / user-change header card in PiP */
+html.pip-mode .app > .card:first-child{
+  display:none!important;
+}
+
+/* 1.5x larger mini typography */
+html.pip-mode body{font-size:16px}
+html.pip-mode .title{font-size:16px}
+html.pip-mode .muted{font-size:12px}
+html.pip-mode .name,
+html.pip-mode .state,
+html.pip-mode .time-left{
+  font-size:15px;
+}
+html.pip-mode .bubble{
+  font-size:13px;
+  height:23px;
+  line-height:23px;
+}
+html.pip-mode .survival-row input{
+  font-size:14px;
+}
+html.pip-mode .btn{
+  font-size:12px;
+}
+html.pip-mode .counter,
+html.pip-mode .error,
+html.pip-mode .success{
+  font-size:10px;
+}
+
+/* Pull member rows closer together */
+html.pip-mode .member{
+  height:27px;
+  min-height:27px;
+  grid-template-columns:minmax(88px,auto) minmax(0,1fr) auto;
+  gap:3px;
+  padding:0;
+}
+html.pip-mode .member-left{gap:3px}
+html.pip-mode .status-dot{
+  width:6px;
+  height:6px;
+}
+
+/* Keep the flat mini UI compact */
+html.pip-mode .card{
+  padding:4px 0;
+}
+html.pip-mode .card + .card{
+  margin-top:0;
+}
+html.pip-mode .section-head{
+  margin-bottom:3px;
+}
+html.pip-mode .board{
+  height:105px;
+}
+
+
+/* ===== FULL PAGE 1.5x SCALE ===== */
+html:not(.pip-mode) body{
+  font-size:12px;
+}
+html:not(.pip-mode) .app{
+  max-width:780px;
+  padding:18px;
+}
+html:not(.pip-mode) .card{
+  border-radius:16px;
+  padding:11px;
+  margin-bottom:9px;
+}
+html:not(.pip-mode) .title{font-size:14px}
+html:not(.pip-mode) .muted{font-size:11px}
+html:not(.pip-mode) .btn{
+  border-radius:10px;
+  padding:9px 12px;
+}
+html:not(.pip-mode) .member{
+  height:42px;
+  grid-template-columns:minmax(135px,auto) minmax(0,1fr) auto;
+  gap:8px;
+}
+html:not(.pip-mode) .name,
+html:not(.pip-mode) .state,
+html:not(.pip-mode) .time-left{
+  font-size:12px;
+}
+html:not(.pip-mode) .status-dot{
+  width:8px;
+  height:8px;
+}
+html:not(.pip-mode) .bubble{
+  height:24px;
+  line-height:24px;
+  padding:0 9px;
+  border-radius:12px;
+  font-size:11px;
+}
+html:not(.pip-mode) .survival-row{gap:6px}
+html:not(.pip-mode) .survival-row input{
+  border-radius:10px;
+  padding:8px 9px;
+}
+html:not(.pip-mode) .counter{font-size:9px}
+html:not(.pip-mode) .board{
+  height:165px;
+  border-radius:12px;
+}
+html:not(.pip-mode) .tools{margin-top:8px}
+html:not(.pip-mode) .color{
+  width:15px;
+  height:15px;
+}
+html:not(.pip-mode) .icon-btn{
+  width:30px;
+  height:30px;
+  border-radius:9px;
+  font-size:15px;
+}
+html:not(.pip-mode) .accordion-body{margin-top:11px}
+html:not(.pip-mode) .grid{gap:8px}
+html:not(.pip-mode) label{
+  font-size:11px;
+  margin-bottom:5px;
+}
+html:not(.pip-mode) input[type=time],
+html:not(.pip-mode) select{
+  border-radius:9px;
+  padding:8px;
+}
+html:not(.pip-mode) .save-row{
+  gap:6px;
+  margin-top:11px;
+}
+
+
+/* ===== WorkBuddy final PiP refinements ===== */
+html.pip-mode .app > .card:first-child{display:none!important}
+
+/* Hide only headings/meta in PiP, not their functional content */
+html.pip-mode .survival-title,
+html.pip-mode .board-title,
+html.pip-mode .board-meta{display:none!important}
+
+/* Fallback for current markup: section heading wrappers */
+html.pip-mode #survivalInput ~ *{} /* specificity anchor */
+html.pip-mode .section-head{min-height:0;margin:0}
+html.pip-mode .section-head .title,
+html.pip-mode .section-head .muted{display:none!important}
+
+/* In mini mode, section boxes are flat and close together */
+html.pip-mode .card{background:transparent;border:0;border-radius:0;box-shadow:none;padding:4px 0;margin:0}
+html.pip-mode .card + .card{border-top:1px solid var(--border)}
+html.pip-mode .member{position:relative;overflow:visible}
+
+/* Bubble overlays the right-side remaining-time text in PiP */
+html.pip-mode .bubble-slot{
+  position:absolute;
+  right:0;
+  top:50%;
+  transform:translateY(-50%);
+  z-index:4;
+  justify-content:flex-end;
+  pointer-events:auto;
+  max-width:150px;
+}
+html.pip-mode .bubble{
+  max-width:150px;
+  font-size:15px;
+  height:24px;
+  line-height:24px;
+  padding:0 7px;
+  background:var(--card);
+  border:1px solid var(--border);
+  box-shadow:0 1px 3px rgba(0,0,0,.08);
+}
+html.pip-mode .bubble-slot:not(:empty) + .time-left{opacity:.15}
+
+/* Full page: survival bubble/reaction same visual weight as status text */
+html:not(.pip-mode) .bubble{
+  font-size:12px;
+  height:26px;
+  line-height:26px;
+}
+html:not(.pip-mode) .bubble-reaction,
+html:not(.pip-mode) .reaction,
+html:not(.pip-mode) .heart-count{
+  font-size:12px!important;
+}
+
+/* PiP survival input readable */
+html.pip-mode .survival-row input{font-size:14px}
+html.pip-mode .counter{font-size:10px}
+
+
+/* ===== QUICK THEME + SIZE FIX ===== */
+html:not(.pip-mode) .heart{
+  font-size:12px!important;
+  line-height:1.2;
+}
+html:not(.pip-mode) #survivalMsg .success{
+  font-size:12px!important;
+  line-height:1.35;
+}
+.theme-quick-btn{white-space:nowrap}
+.mini-theme-btn{
+  display:none;
+  border:0;
+  background:transparent;
+  color:var(--text);
+  cursor:pointer;
+  padding:0;
+}
+html.pip-mode .mini-theme-btn{
+  display:grid;
+  position:fixed;
+  top:4px;
+  right:8px;
+  z-index:30;
+  width:22px;
+  height:22px;
+  place-items:center;
+  font-size:14px;
+  line-height:1;
+  border-radius:50%;
+  background:var(--soft);
+}
+html.pip-mode .theme-quick-btn{display:none!important}
+
+
+/* ===== FINAL TINY FIXES ===== */
+html:not(.pip-mode) #boardMsg .success{
+  font-size:12px!important;
+  line-height:1.35;
+}
+
+/* Mini window: no WorkBuddy title/header and no user-change button */
+html.pip-mode .app > .card:first-child{
+  display:none!important;
+}
+html.pip-mode #changeUserBtn{
+  display:none!important;
+}
+
+
+/* ===== FINAL REQUESTED FIXES ===== */
+html.pip-mode .app > .card:first-of-type,
+html.pip-mode .top,
+html.pip-mode .topbar,
+html.pip-mode .header,
+html.pip-mode .app-header{
+  display:none!important;
+}
+html.pip-mode #changeUserBtn{display:none!important}
+
+/* mini overtime control */
+.mini-overtime-row{display:none}
+html.pip-mode .mini-overtime-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:5px 0;
+  border-top:1px solid var(--border);
+  font-size:13px;
+}
+html.pip-mode .mini-overtime-row .btn{
+  font-size:12px;
+  padding:4px 7px;
+}
+html.pip-mode #miniOvertimeElapsed{
+  margin-left:auto;
+  font-size:13px;
+  white-space:nowrap;
+}
+
+/* full-page weekly total time: same readable weight as surrounding work text */
+html:not(.pip-mode) #weekTotal,
+html:not(.pip-mode) #weekTotalTime,
+html:not(.pip-mode) .week-total-time{
+  font-size:12px!important;
+  line-height:1.35;
+}
+
+
+.mini-overtime-wrap{display:none}
+html.pip-mode .mini-overtime-wrap{
+  display:block;
+  padding:5px 0 0;
+  border-top:1px solid var(--border);
+}
+html.pip-mode .mini-overtime-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:7px 0 0;
+  margin-top:4px;
+  border-top:1px solid var(--border);
+  font-size:13px;
+}
+html.pip-mode .mini-overtime-row .btn{
+  background:#000!important;
+  color:#fff!important;
+  border:1px solid #000!important;
+}
+html.pip-mode .mini-today-total{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:6px 0 2px;
+  border-top:1px solid var(--border);
+  font-size:13px;
+}
+html.pip-mode #miniTodayTotal{
+  white-space:nowrap;
+}
+
+
+/* ===== FINAL POLISH ===== */
+html:not(.pip-mode) #weekTotal,
+html:not(.pip-mode) #weekTotalTime,
+html:not(.pip-mode) .week-total-time,
+html:not(.pip-mode) #weekOvertimeText,
+html:not(.pip-mode) #overtimeSummary,
+html:not(.pip-mode) .overtime-summary,
+html:not(.pip-mode) .overtime-empty{
+  font-size:12px!important;
+  line-height:1.4;
+}
+
+/* Mini theme button -> bottom right */
+html.pip-mode .mini-theme-btn{
+  top:auto!important;
+  right:8px!important;
+  bottom:8px!important;
+  left:auto!important;
+}
+
+/* Mini today/week totals */
+html.pip-mode .mini-week-total{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:6px 0 2px;
+  border-top:1px solid var(--border);
+  font-size:13px;
+}
+html.pip-mode #miniWeekTotal{
+  white-space:nowrap;
+}
+
+
+/* ===== EXACT TEXT SIZE + DARK BOARD FIX ===== */
+/* Make weekly total number + overtime summary exactly the same size as member status text */
+html:not(.pip-mode) #weekTotal,
+html:not(.pip-mode) #weekTotalTime,
+html:not(.pip-mode) #weekOvertimeText,
+html:not(.pip-mode) #overtimeSummary,
+html:not(.pip-mode) .week-total-time,
+html:not(.pip-mode) .overtime-summary,
+html:not(.pip-mode) .overtime-empty,
+html:not(.pip-mode) #weekCard .muted,
+html:not(.pip-mode) #weekBody .muted{
+  font-size:12px!important;
+  line-height:1.2!important;
+}
+
+/* PiP dark mode: doodle board itself becomes dark too */
+html.pip-mode[data-theme="dark"] .board,
+html.pip-mode[data-theme="dark"] canvas.board,
+html.pip-mode[data-theme="dark"] #board,
+html.pip-mode[data-theme="dark"] #boardCanvas{
+  background:#1f1f1f!important;
+  border-color:#3a3a3a!important;
+}
+
+
+/* ===== ACTUAL WEEKLY ELEMENTS: FORCE SAME SIZE AS "업무중" ===== */
+html:not(.pip-mode) #weekTotal{
+  font-size:12px!important;
+  line-height:1.2!important;
+}
+html:not(.pip-mode) #weekList,
+html:not(.pip-mode) #weekList .muted,
+html:not(.pip-mode) #weekList > div{
+  font-size:12px!important;
+  line-height:1.2!important;
+}
+
+/* Mini member line: exactly 2px smaller than current 15px */
+html.pip-mode .name,
+html.pip-mode .state,
+html.pip-mode .time-left{
+  font-size:13px!important;
+}
+
+
+/* ===== FIX ACTUAL WEEKLY ELEMENTS ===== */
+html:not(.pip-mode) #weeklyHours,
+html:not(.pip-mode) #overtimeLive{
+  font-size:12px!important;
+  line-height:1.2!important;
+}
+
+
+/* ===== PiP FINAL UNIFIED TYPOGRAPHY ===== */
+html.pip-mode body,
+html.pip-mode .app,
+html.pip-mode .app *,
+html.pip-mode button,
+html.pip-mode input,
+html.pip-mode select,
+html.pip-mode .name,
+html.pip-mode .state,
+html.pip-mode .time-left,
+html.pip-mode .bubble,
+html.pip-mode .muted,
+html.pip-mode .counter,
+html.pip-mode .success,
+html.pip-mode .error,
+html.pip-mode .mini-overtime-row,
+html.pip-mode .mini-today-total,
+html.pip-mode .mini-week-total,
+html.pip-mode #miniOvertimeElapsed,
+html.pip-mode #miniTodayTotal,
+html.pip-mode #miniWeekTotal{
+  font-size:13px!important;
+}
+html.pip-mode .status-dot,
+html.pip-mode .color{
+  font-size:initial!important;
+}
+
+
+/* ===== FULL PAGE: SYSTEM / FEEDBACK TEXT SIZE NORMALIZATION ===== */
+/* Small system messages such as 저장됐어요, 추가됐어요, 오류 안내, counters, helper text */
+html:not(.pip-mode) .success,
+html:not(.pip-mode) .error,
+html:not(.pip-mode) #boardMsg,
+html:not(.pip-mode) #boardMsg *,
+html:not(.pip-mode) #survivalMsg,
+html:not(.pip-mode) #survivalMsg *,
+html:not(.pip-mode) #settingsMsg,
+html:not(.pip-mode) #settingsMsg *,
+html:not(.pip-mode) #weekMsg,
+html:not(.pip-mode) #weekMsg *,
+html:not(.pip-mode) .counter,
+html:not(.pip-mode) .helper,
+html:not(.pip-mode) .hint,
+html:not(.pip-mode) small{
+  font-size:12px!important;
+  line-height:1.35!important;
+}
+
+/* Keep ordinary muted/system labels readable too */
+html:not(.pip-mode) .muted{
+  font-size:12px!important;
+  line-height:1.35!important;
+}
+
+
+/* ===== CONNECTION / ONLINE COUNT SIZE ===== */
+html:not(.pip-mode) #connectionText,
+html:not(.pip-mode) #connectionStatus,
+html:not(.pip-mode) #onlineCount,
+html:not(.pip-mode) .connection-text,
+html:not(.pip-mode) .online-count,
+html:not(.pip-mode) .top .muted,
+html:not(.pip-mode) .topbar .muted,
+html:not(.pip-mode) .header .muted{
+  font-size:12px!important;
+  line-height:1.35!important;
+}
+
+
+/* ===== REQUESTED FEATURES (safe layer) ===== */
+.custom-status{
+  color:var(--muted);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:180px;
+}
+.member-manager-toolbar{
+  display:flex;
+  justify-content:flex-end;
+  margin-bottom:8px;
+}
+.member-manager-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-height:38px;
+  border-bottom:1px solid var(--border);
+}
+.member-manager-row:last-child{border-bottom:0}
+.member-manager-name{flex:1}
+.member-manager-state{color:var(--muted)}
+.member-manager-delete{
+  border:1px solid color-mix(in srgb,var(--danger) 35%,transparent);
+  background:transparent;
+  color:var(--danger);
+  border-radius:8px;
+  padding:5px 8px;
+  cursor:pointer;
+}
+.opacity-row label{margin:0;white-space:nowrap}
+.opacity-row input[type="range"]{flex:1}
+html.pip-mode .custom-status{font-size:13px!important}
+
+
+/* ===== FINAL DARK + BUBBLE ===== */
+html[data-theme="dark"] .board,
+html[data-theme="dark"] canvas.board,
+html[data-theme="dark"] #board{
+  background:#1f1f1f!important;
+  border-color:#3a3a3a!important;
+}
+.bubble{
+  box-shadow:0 4px 12px rgba(0,0,0,.28)!important;
+}
+.day-schedule-list{display:grid;gap:5px}
+.day-schedule-row{
+  display:grid;
+  grid-template-columns:48px 1fr 1fr;
+  gap:7px;
+  align-items:center;
+  padding:4px 0;
+  border-bottom:1px solid var(--border);
+}
+.day-schedule-row:last-child{border-bottom:0}
+.day-schedule-day{display:flex;align-items:center;gap:4px;margin:0!important;color:var(--text)}
+.day-schedule-row input[type="time"]{
+  width:100%;border:1px solid var(--border);background:var(--input);border-radius:7px;padding:6px
+}
+.custom-mode-input{margin-top:6px}
+</style>
+</head>
+<body>
+<script>document.documentElement.dataset.theme="dark";</script>
+<div id="whoOverlay" class="who-overlay" style="display:none">
+  <div class="who-box">
+    <div class="title">내 정보</div>
+    <div class="muted" style="margin-top:4px">처음 한 번만 정하면 이 브라우저에 기억됩니다.</div>
+    <div class="who-form">
+      <input id="whoName" maxlength="12" placeholder="이름을 입력하세요">
+      <select id="whoMode">
+        <option value="work">업무중</option>
+        <option value="study">공부중</option>
+        <option value="game">게임중</option>
+        <option value="custom">직접 입력</option>
+      </select>
+      <input id="whoCustomMode" class="custom-mode-input" maxlength="10" placeholder="예: 운동중, 회의중" style="display:none">
+      <div class="who-actions">
+        <button id="whoCancelBtn" class="btn secondary" type="button">취소</button>
+        <button id="whoSaveBtn" class="btn" type="button">시작</button>
+      </div>
+      <div id="whoMsg"></div>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+  <div class="card">
+    <div class="top">
+      <div>
+        <div class="title">WorkBuddy</div>
+        <div class="header-meta"><span id="connectionText" class="muted">연결 확인 중...</span><span>·</span><span id="onlineCount" class="online-count">0명 접속 중</span></div>
+      </div>
+      <div style="display:flex;gap:4px">
+        <button id="pipBtn" class="btn pip-btn">미니창으로 띄우기</button>
+        <button id="changeUserBtn" class="btn secondary">사용자 변경</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div id="members"></div>
+  </div>
+
+  <div class="card">
+        <div class="survival-row">
+      <input id="survivalInput" maxlength="30" placeholder="한마디 남기기">
+      <button id="survivalBtn" class="btn">올리기</button>
+    </div>
+    <div id="counter" class="counter">0 / 30</div>
+    <div id="survivalMsg"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-head">
+      <div></div>
+      <div class="muted board-meta">자동저장</div>
+    </div>
+    <canvas id="board" class="board" width="328" height="110"></canvas>
+    <div class="tools">
+      <div class="color-tools">
+        <button class="color active" aria-label="핑크" data-color="#F3B6C6" style="background:#F3B6C6"></button>
+        <button class="color" aria-label="옐로" data-color="#F4D68A" style="background:#F4D68A"></button>
+        <button class="color" aria-label="민트" data-color="#BFE3CF" style="background:#BFE3CF"></button>
+        <button class="color" aria-label="블루" data-color="#B8D6F2" style="background:#B8D6F2"></button>
+        <button class="color" aria-label="라벤더" data-color="#D7C2EC" style="background:#D7C2EC"></button>
+      </div>
+      <div class="erase-tools">
+        <button id="eraserBtn" class="icon-btn" title="지우개" aria-label="지우개">🧽</button>
+        <button id="clearBtn" class="icon-btn" title="전체 지우기" aria-label="전체 지우기">🗑️</button>
+      </div>
+    </div>
+    <div id="boardMsg"></div>
+  </div>
+
+  
+  <div class="mini-overtime-wrap" id="miniOvertimeWrap">
+    <div class="mini-today-total">
+      <span>오늘 총 일한 시간</span>
+      <span id="miniTodayTotal">0시간 00분</span>
+    </div>
+    <div class="mini-week-total">
+      <span>이번 주 총 일한 시간</span>
+      <span id="miniWeekTotal">0시간 00분</span>
+    </div>
+    <div class="mini-overtime-row" id="miniOvertimeRow">
+      <button class="btn" id="miniOvertimeBtn" type="button">야근 시작</button>
+      <span id="miniOvertimeElapsed">야근 +00:00:00</span>
+    </div>
+  </div>
+  <div class="card pip-hide">
+    <div id="memberManageTitle" class="accordion-title">
+      <div class="title">인원 관리</div><div>⌄</div>
+    </div>
+    <div id="memberManageBody" class="accordion-body">
+      <div class="member-manager-toolbar"><button id="deleteOthersBtn" class="btn danger" type="button">나 제외 전체 삭제</button></div>
+      <div id="memberManager"></div>
+      <div id="memberManagerMsg"></div>
+    </div>
+  </div>
+
+<div class="card pip-hide">
+    <div id="weekTitle" class="accordion-title">
+      <div class="title">이번 주 · 야근</div><div>⌄</div>
+    </div>
+    <div id="weekBody" class="accordion-body">
+      <div class="tiny-row"><span>이번 주 총 근무</span><span id="weeklyHours" class="weekly-value">0시간 00분</span></div>
+      <div id="legalWarning" class="legal-warning" style="display:none;margin-top:3px">법정 근로시간 초과</div>
+      <div class="overtime-box">
+        <div id="overtimeLive" class="overtime-live-big">야근 기록 없음</div>
+        <div class="save-row"><button id="overtimeStartBtn" class="btn" type="button">야근 시작</button><button id="overtimeEndBtn" class="btn secondary" type="button" style="display:none">야근 종료</button></div>
+        <div style="margin-top:7px" class="muted">오늘 야근 수동 입력</div>
+        <div class="manual-row" style="margin-top:4px"><div><label>시작</label><input id="manualOtStart" type="time"></div><div><label>종료</label><input id="manualOtEnd" type="time"></div><button id="manualOtAdd" class="btn secondary" type="button">추가</button></div>
+        <div id="weekMsg"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card pip-hide">
+    <div id="settingsTitle" class="accordion-title">
+      <div class="title">내 시간 설정</div>
+      <div>⌄</div>
+    </div>
+    <div id="settingsBody" class="accordion-body">
+      <div style="margin-bottom:10px"><label>기본 상태</label><select id="activityType"><option value="work">업무중</option><option value="study">공부중</option><option value="game">게임중</option><option value="custom">직접 입력</option></select><input id="settingsCustomMode" class="custom-mode-input" maxlength="10" placeholder="예: 운동중, 회의중" style="display:none"></div>
+      <div style="margin-bottom:10px">
+        <label>요일별 활동 시간</label>
+        <div id="daySchedules" class="day-schedule-list">
+<div class="day-schedule-row" data-day="1">
+<label class="day-schedule-day"><input class="day-active" type="checkbox"> 월</label>
+<input class="day-start" type="time" value="09:00">
+<input class="day-end" type="time" value="18:00">
+</div>
+<div class="day-schedule-row" data-day="2">
+<label class="day-schedule-day"><input class="day-active" type="checkbox"> 화</label>
+<input class="day-start" type="time" value="09:00">
+<input class="day-end" type="time" value="18:00">
+</div>
+<div class="day-schedule-row" data-day="3">
+<label class="day-schedule-day"><input class="day-active" type="checkbox"> 수</label>
+<input class="day-start" type="time" value="09:00">
+<input class="day-end" type="time" value="18:00">
+</div>
+<div class="day-schedule-row" data-day="4">
+<label class="day-schedule-day"><input class="day-active" type="checkbox"> 목</label>
+<input class="day-start" type="time" value="09:00">
+<input class="day-end" type="time" value="18:00">
+</div>
+<div class="day-schedule-row" data-day="5">
+<label class="day-schedule-day"><input class="day-active" type="checkbox"> 금</label>
+<input class="day-start" type="time" value="09:00">
+<input class="day-end" type="time" value="18:00">
+</div>
+<div class="day-schedule-row" data-day="6">
+<label class="day-schedule-day"><input class="day-active" type="checkbox"> 토</label>
+<input class="day-start" type="time" value="09:00">
+<input class="day-end" type="time" value="18:00">
+</div>
+<div class="day-schedule-row" data-day="0">
+<label class="day-schedule-day"><input class="day-active" type="checkbox"> 일</label>
+<input class="day-start" type="time" value="09:00">
+<input class="day-end" type="time" value="18:00">
+</div>
+        </div>
+      </div>
+      <div class="grid">
+        <div><label>점심 시작</label><input id="lunchStart" type="time" value="12:00"></div>
+        <div><label>점심 종료</label><input id="lunchEnd" type="time" value="13:00"></div>
+      </div>
+      <div class="save-row">
+        <button id="saveSettingsBtn" class="btn">설정 저장</button>
+        <button id="deleteAccountBtn" class="btn danger" type="button">내 계정 삭제</button>
+      </div>
+      <div id="settingsMsg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const IS_DESKTOP = new URLSearchParams(location.search).get("desktop") === "1";
+if(IS_DESKTOP) document.documentElement.classList.add("pip-mode");
+const SUPABASE_URL = "https://tgyfscvjnkaiykyfyzcc.supabase.co";
+const SUPABASE_KEY = "sb_publishable_4bdFjW6A7ahg9AaaV8AetQ_KEFbNYvw";
+const API = SUPABASE_URL + "/rest/v1";
+let me = localStorage.getItem("workbuddy_user");
+let pollTimer = null;
+let boardDirty = false;
+let boardSaveTimer = null;
+let strokes = [];
+let memberModes = {};
+let drawing = false;
+let currentStroke = null;
+let currentColor = "#F3B6C6";
+let eraser = false;
+let presenceTimer = null;
+let overtimeRows = [];
+let sharedMeta = {reactions:{},deletedIds:[],customStatuses:{},customModes:{},daySchedules:{}};
+
+let previousOnline = {};
+let joinedUntil = {};
+let weeklyTimer = null;
+let lastMembers = [];
+
+const headers = {
+  "apikey": SUPABASE_KEY,
+  "Authorization": "Bearer " + SUPABASE_KEY,
+  "Content-Type": "application/json",
+  "Prefer": "return=representation"
+};
+
+let uiDoc = document;
+const $ = s => (uiDoc || document).querySelector(s);
+const $$ = s => Array.from((uiDoc || document).querySelectorAll(s));
+
+function applyTheme(){
+  document.documentElement.dataset.theme="dark";
+  if(uiDoc && uiDoc.documentElement) uiDoc.documentElement.dataset.theme="dark";
+}
+applyTheme();
+
+
+
+
+
+
+function displayNameForMe(){
+  return localStorage.getItem("workbuddy_name") || me || "";
+}
+function showWho(){
+  $("#whoOverlay").style.display = "flex";
+  $("#whoName").value = displayNameForMe();
+  $("#whoMode").value = (me && memberModes[me]) || localStorage.getItem("workbuddy_mode") || "work";
+  const cm=(me && sharedMeta.customModes?.[me]) || localStorage.getItem("workbuddy_custom_mode") || "";
+  if($("#whoCustomMode")){
+    $("#whoCustomMode").value=cm;
+    $("#whoCustomMode").style.display=$("#whoMode").value==="custom"?"block":"none";
+  }
+  $("#whoCancelBtn").style.display = me ? "inline-block" : "none";
+  setTimeout(()=>$("#whoName").focus(), 0);
+}
+function hideWho(){
+  $("#whoOverlay").style.display = "none";
+  $("#whoMsg").innerHTML = "";
+}
+function makeMemberId(){
+  if(window.crypto && crypto.randomUUID) return "u_" + crypto.randomUUID().replace(/-/g,"");
+  return "u_" + Date.now().toString(36) + Math.random().toString(36).slice(2,10);
+}
+if(!me) showWho();
+
+$("#whoCancelBtn").addEventListener("click", hideWho);
+$("#whoName").addEventListener("keydown", e=>{ if(e.key==="Enter") $("#whoSaveBtn").click(); });
+
+$("#whoSaveBtn").addEventListener("click", async()=>{
+  const name = $("#whoName").value.trim();
+  const mode = $("#whoMode").value;
+  const customMode=($("#whoCustomMode")?.value||"").trim();
+  if(!name){
+    $("#whoMsg").innerHTML='<div class="error">이름을 입력해주세요.</div>';
+    return;
+  }
+  if(name.length > 12){
+    $("#whoMsg").innerHTML='<div class="error">이름은 12자까지 가능해요.</div>';
+    return;
+  }
+  try{
+    const all = await api("/members?select=id,name");
+    const duplicate = (all||[]).find(x=>!sharedMeta.deletedIds.includes(x.id) && String(x.name).trim().toLowerCase()===name.toLowerCase() && x.id!==me);
+    if(duplicate){
+      if(IS_DESKTOP && !me){
+        // 브라우저와 데스크톱 앱은 저장 공간이 달라서, 첫 실행 때 기존 이름의 ID를 이어받는다.
+        me=duplicate.id;
+      }else{
+        $("#whoMsg").innerHTML='<div class="error">이미 사용 중인 이름이에요. 다른 이름을 골라주세요.</div>';
+        return;
+      }
+    }
+
+    if(!me){
+      me = makeMemberId();
+      await api("/members",{
+        method:"POST",
+        body:JSON.stringify({
+          id:me,
+          name,
+          work_start:"09:00",
+          work_end:"18:00",
+          lunch_start:"12:00",
+          lunch_end:"13:00",
+          work_days:[1,2,3,4,5],
+          updated_at:new Date().toISOString()
+        })
+      });
+    }else{
+      await api(`/members?id=eq.${encodeURIComponent(me)}`,{
+        method:"PATCH",
+        body:JSON.stringify({name,updated_at:new Date().toISOString()})
+      });
+    }
+
+    memberModes[me] = mode;
+    sharedMeta.customModes=sharedMeta.customModes||{};
+    if(mode==="custom") sharedMeta.customModes[me]=customMode||"기타중";
+    else delete sharedMeta.customModes[me];
+    localStorage.setItem("workbuddy_user", me);
+    localStorage.setItem("workbuddy_name", name);
+    localStorage.setItem("workbuddy_mode", mode);
+    if(mode==="custom") localStorage.setItem("workbuddy_custom_mode",customMode||"기타중");
+    else localStorage.removeItem("workbuddy_custom_mode");
+    await saveBoard();
+    hideWho();
+    await loadAll(true);
+    startPresence();
+  }catch(e){
+    $("#whoMsg").innerHTML='<div class="error">저장 실패: '+escapeHtml(e.message)+'</div>';
+  }
+});
+$("#changeUserBtn").addEventListener("click", showWho);
+
+async function api(path, options={}){
+  const res = await fetch(API + path, {headers, ...options});
+  if(!res.ok){
+    const txt = await res.text();
+    throw new Error(txt || ("HTTP " + res.status));
+  }
+  if(res.status===204) return null;
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+function fmtTime(t){ return (t||"").slice(0,5); }
+function minutesOf(s){
+  if(!s) return 0;
+  const [h,m]=s.slice(0,5).split(":").map(Number);
+  return h*60+m;
+}
+function nowMinutes(){ const d=new Date(); return d.getHours()*60+d.getMinutes(); }
+
+
+function getDaySchedule(m,day){
+  const saved=sharedMeta.daySchedules?.[m.id]?.[day];
+  const activeDefault=(m.work_days||[1,2,3,4,5]).includes(day);
+  return {
+    active:saved ? saved.active!==false : activeDefault,
+    start:(saved?.start || fmtTime(m.work_start) || "09:00"),
+    end:(saved?.end || fmtTime(m.work_end) || "18:00")
+  };
+}
+function fillDaySchedules(m){
+  $$("#daySchedules .day-schedule-row").forEach(row=>{
+    const d=Number(row.dataset.day),sc=getDaySchedule(m,d);
+    const active=row.querySelector(".day-active"),start=row.querySelector(".day-start"),end=row.querySelector(".day-end");
+    if(active) active.checked=sc.active;
+    if(start) start.value=sc.start||"09:00";
+    if(end) end.value=sc.end||"18:00";
+  });
+}
+function readDaySchedules(){
+  const out={};
+  $$("#daySchedules .day-schedule-row").forEach(row=>{
+    const d=Number(row.dataset.day);
+    out[d]={
+      active:!!row.querySelector(".day-active")?.checked,
+      start:row.querySelector(".day-start")?.value||"09:00",
+      end:row.querySelector(".day-end")?.value||"18:00"
+    };
+  });
+  return out;
+}
+
+function memberState(m){
+  const d=new Date(),day=d.getDay(),sc=getDaySchedule(m,day);
+  const mode=memberModes[m.id]||"work";
+  const isStudy=mode==="study",isGame=mode==="game",isCustom=mode==="custom";
+  const customLabel=(sharedMeta.customModes?.[m.id]||"기타중").trim()||"기타중";
+  const activeLabel=isCustom?customLabel:(isGame?"게임중":(isStudy?"공부중":"업무중"));
+  const beforeLabel=isCustom?`${customLabel} 전`:(isGame?"게임 전":(isStudy?"공부 전":"출근 전"));
+  const endLabel=isCustom?`${customLabel} 끝`:(isGame?"게임 끝":(isStudy?"공부 끝":"퇴근함"));
+  const leftWord=(isStudy||isGame||isCustom)?"종료까지":"퇴근까지";
+  if(!sc.active) return {label:endLabel,sub:"",done:true};
+  const n=nowMinutes(),ws=minutesOf(sc.start),we=minutesOf(sc.end),ls=minutesOf(m.lunch_start),le=minutesOf(m.lunch_end);
+  if(n<ws) return {label:beforeLabel,sub:`${sc.start} 시작`,done:false};
+  if(n>=we) return {label:endLabel,sub:"",done:true};
+  if(mode==="work"&&n>=ls&&n<le) return {label:"점심먹는중",sub:`${le-n}분 남음`,done:false};
+  const left=we-n;
+  return {label:activeLabel,sub:`${leftWord} ${Math.floor(left/60)}시간 ${left%60}분`,done:false};
+}
+function activeOvertimeFor(memberId){
+  return overtimeRows.find(r=>r.member_id===memberId && !r.ended_at) || null;
+}
+function formatDurationMs(ms){ const total=Math.max(0,Math.floor(ms/1000)); const h=Math.floor(total/3600); const m=Math.floor((total%3600)/60); const sec=total%60; return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`; }
+
+function isLunchNow(member){
+  if(!member) return false;
+  const mode=memberModes[member.id]||"work";
+  if(mode!=="work") return false;
+  const sc=getDaySchedule(member,new Date().getDay());
+  if(!sc.active) return false;
+  const n=nowMinutes(),ls=minutesOf(member.lunch_start),le=minutesOf(member.lunch_end);
+  return n>=ls&&n<le;
+}
+function renderMembers(members){
+  const now=Date.now();
+  const visible=members.filter(m=>{
+    const isOnline=!!(m.updated_at&&(now-new Date(m.updated_at).getTime()<35000));
+    return !sharedMeta.deletedIds.includes(m.id) && isOnline;
+  }).sort((a,b)=>{
+    const aOnline=!!(a.updated_at&&(now-new Date(a.updated_at).getTime()<35000));
+    const bOnline=!!(b.updated_at&&(now-new Date(b.updated_at).getTime()<35000));
+    if(aOnline!==bOnline) return aOnline?-1:1;
+    if(a.id===me&&b.id!==me) return -1;
+    if(b.id===me&&a.id!==me) return 1;
+    return String(a.name||"").localeCompare(String(b.name||""),"ko");
+  });
+  let onlineCount=0;
+  $("#members").innerHTML=visible.map(m=>{
+    const st=memberState(m); const isOnline=!!(m.updated_at&&(now-new Date(m.updated_at).getTime()<35000));
+    if(isOnline) onlineCount++;
+    if(isOnline && previousOnline[m.id]===false) joinedUntil[m.id]=now+3000;
+    previousOnline[m.id]=isOnline;
+    const justJoined=isOnline&&joinedUntil[m.id]&&joinedUntil[m.id]>now;
+    const ot=activeOvertimeFor(m.id);
+    let right=st.sub;
+    if(ot){ right=`<span class="overtime-live">야근 +${formatDurationMs(now-new Date(ot.started_at).getTime())}</span>`; }
+    let bubble="";
+    if(m.survival_message&&m.survival_expires_at&&new Date(m.survival_expires_at)>new Date()){
+      const reaction=sharedMeta.reactions[m.id];
+      const valid=reaction&&reaction.key===m.survival_expires_at?reaction:{users:[]};
+      const count=(valid.users||[]).length;
+      bubble=`<div class="bubble" style="background:${pastelForMessage(m.id,m.survival_expires_at)};color:#333" data-react-id="${escapeHtml(m.id)}" data-react-key="${escapeHtml(m.survival_expires_at)}" title="클릭해서 ♥">${escapeHtml(m.survival_message)}</div><span class="heart" data-react-id="${escapeHtml(m.id)}" data-react-key="${escapeHtml(m.survival_expires_at)}">♥${count?count:""}</span>`;
+    }
+    return `<div class="member ${st.done&&!ot?"done":""}"><div class="member-left"><span class="status-dot ${isOnline?"online":""}"></span><span class="name">${escapeHtml(m.name)}</span><span class="state">${ot?"야근중":st.label}</span>${justJoined?'<span class="joined">방금 들어옴</span>':""}</div><div class="bubble-slot">${bubble}</div><div class="time-left">${right}</div></div>`;
+  }).join("");
+  $("#onlineCount").textContent=`${onlineCount}명 접속 중`;
+  $$('[data-react-id]').forEach(el=>el.addEventListener('click',()=>toggleReaction(el.dataset.reactId,el.dataset.reactKey)));
+}
+
+function pastelForMessage(memberId,key){
+  const colors=["#FFDDE7","#FFF0C9","#DDF3E4","#DCEEFF","#E9DDF7","#FFE4D6","#E1F2F2","#F4E3EE"];
+  const seed=String(memberId||"")+"|"+String(key||"");
+  let h=0;
+  for(const ch of seed) h=((h<<5)-h)+ch.charCodeAt(0);
+  return colors[Math.abs(h)%colors.length];
+}
+
+function renderMemberManagerSafe(){
+  const box=$("#memberManager");
+  if(!box) return;
+  const now=Date.now();
+  const arr=(lastMembers||[]).filter(m=>!sharedMeta.deletedIds.includes(m.id)).sort((a,b)=>{
+    const ao=!!(a.updated_at&&(now-new Date(a.updated_at).getTime()<35000));
+    const bo=!!(b.updated_at&&(now-new Date(b.updated_at).getTime()<35000));
+    if(ao!==bo) return ao?-1:1;
+    if(a.id===me&&b.id!==me) return -1;
+    if(b.id===me&&a.id!==me) return 1;
+    return String(a.name||"").localeCompare(String(b.name||""),"ko");
+  });
+  box.innerHTML=arr.length?arr.map(m=>{
+    const online=!!(m.updated_at&&(now-new Date(m.updated_at).getTime()<35000));
+    const mode=memberModes[m.id]||"work";
+    const label=mode==="study"?"공부중":mode==="game"?"게임중":"업무중";
+    return `<div class="member-manager-row"><span class="status-dot ${online?"online":""}"></span><span class="member-manager-name">${escapeHtml(m.name)}</span><span class="member-manager-state">${label}</span><button class="member-manager-delete" type="button" data-manage-delete="${escapeHtml(m.id)}">삭제</button></div>`;
+  }).join(""):'<div class="muted">등록된 인원이 없습니다.</div>';
+  $$('[data-manage-delete]').forEach(btn=>btn.addEventListener('click',()=>deleteManagedMember(btn.dataset.manageDelete)));
+}
+
+async function deleteManagedMember(id){
+  if(!id) return;
+  const msg=$("#memberManagerMsg");
+  try{
+    await loadBoard();
+
+    // Supabase DELETE 권한 없이 WorkBuddy 내부에서 삭제 처리.
+    sharedMeta.deletedIds=sharedMeta.deletedIds||[];
+    if(!sharedMeta.deletedIds.includes(id)) sharedMeta.deletedIds.push(id);
+
+    if(sharedMeta.reactions) delete sharedMeta.reactions[id];
+    delete memberModes[id];
+    if(sharedMeta.customModes) delete sharedMeta.customModes[id];
+    if(sharedMeta.daySchedules) delete sharedMeta.daySchedules[id];
+
+    await saveBoard();
+
+    // 화면 목록에서도 즉시 제거
+    lastMembers=(lastMembers||[]).filter(m=>m.id!==id);
+
+    if(id===me){
+      localStorage.removeItem('workbuddy_user');
+      localStorage.removeItem('workbuddy_name');
+      localStorage.removeItem('workbuddy_mode');
+      localStorage.removeItem('workbuddy_custom_mode');
+      me=null;
+      clearInterval(presenceTimer);
+      showWho();
+    }
+
+    if(msg) msg.innerHTML='<div class="success">삭제됐어요. 같은 이름으로 다시 등록할 수 있어요.</div>';
+
+    renderMembers(lastMembers);
+    renderMemberManagerSafe();
+  }catch(e){
+    console.error('member soft delete failed',e);
+    if(msg) msg.innerHTML='<div class="error">삭제 실패: '+escapeHtml(e.message||String(e))+'</div>';
+  }
+}
+async function deleteOthers(){
+  const ids=[...(lastMembers||[])]
+    .map(m=>m.id)
+    .filter(id=>id!==me&&!sharedMeta.deletedIds.includes(id));
+
+  for(const id of ids){
+    await deleteManagedMember(id);
+  }
+
+  renderMembers(lastMembers||[]);
+  renderMemberManagerSafe();
+}
+
+
+
+async function toggleReaction(memberId,key){
+  if(!me) return showWho();
+  await loadBoard();
+  const cur=sharedMeta.reactions[memberId]&&sharedMeta.reactions[memberId].key===key?sharedMeta.reactions[memberId]:{key,users:[]};
+  const users=Array.isArray(cur.users)?cur.users:[]; const i=users.indexOf(me); if(i>=0) users.splice(i,1); else users.push(me);
+  sharedMeta.reactions[memberId]={key,users}; await saveBoard(); await loadMembers();
+}
+function escapeHtml(s){
+  return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+}
+
+async function loadMembers(){
+  const data = await api("/members?select=*&order=name.asc");
+  lastMembers = data || [];
+  renderMembers(lastMembers);
+  const mine = (data||[]).find(x=>x.id===me && !sharedMeta.deletedIds.includes(x.id));
+  if(mine){
+    localStorage.setItem("workbuddy_name", mine.name);
+    fillSettings(mine);
+  }else if(me){
+    // DB에서 내 행이 사라졌다면 다시 가입하도록 초기화
+    localStorage.removeItem("workbuddy_user");
+    localStorage.removeItem("workbuddy_name");
+    localStorage.removeItem("workbuddy_mode");
+    me = null;
+    showWho();
+  }
+}
+
+function fillSettings(m){
+  if(!m) return;
+
+  // 3초 폴링 중에도 사용자가 설정을 입력하는 동안에는 값을 덮어쓰지 않는다.
+  const active=(uiDoc||document).activeElement;
+  const settingsBody=$("#settingsBody");
+  if(active && settingsBody && settingsBody.contains(active)) return;
+
+  const activity=$("#activityType");
+  if(activity) activity.value=memberModes[m.id]||"work";
+
+  const custom=$("#settingsCustomMode");
+  if(custom){
+    custom.value=sharedMeta.customModes?.[m.id]||"";
+    custom.style.display=(activity?.value==="custom")?"block":"none";
+  }
+
+  const ls=$("#lunchStart"),le=$("#lunchEnd");
+  if(ls) ls.value=fmtTime(m.lunch_start)||"12:00";
+  if(le) le.value=fmtTime(m.lunch_end)||"13:00";
+
+  fillDaySchedules(m);
+}
+$("#survivalInput").addEventListener("input",e=>$("#counter").textContent=`${e.target.value.length} / 30`);
+$("#survivalBtn").addEventListener("click", async()=>{
+  if(!me) return showWho();
+  const text = $("#survivalInput").value.trim();
+  if(!text) return;
+  const expires = new Date(Date.now()+3*60*1000).toISOString();
+  try{
+    await api(`/members?id=eq.${encodeURIComponent(me)}`,{
+      method:"PATCH",
+      body:JSON.stringify({survival_message:text,survival_expires_at:expires,updated_at:new Date().toISOString()})
+    });
+    sharedMeta.reactions[me]={key:expires,users:[]};
+    await saveBoard();
+    $("#survivalInput").value="";
+    if($("#survivalCount")) $("#survivalCount").textContent="0 / 30";
+    $("#counter").textContent="0 / 30";
+    $("#survivalMsg").innerHTML='<div class="success">생존신고 올라감!</div>';
+    await loadMembers();
+  }catch(e){
+    $("#survivalMsg").innerHTML='<div class="error">업로드 실패: '+escapeHtml(e.message)+'</div>';
+  }
+});
+
+$("#settingsTitle").addEventListener("click",()=>$("#settingsBody").classList.toggle("open"));
+$("#whoMode")?.addEventListener("change",e=>{
+  const x=$("#whoCustomMode"); if(x) x.style.display=e.target.value==="custom"?"block":"none";
+});
+$("#activityType")?.addEventListener("change",e=>{
+  const x=$("#settingsCustomMode"); if(x) x.style.display=e.target.value==="custom"?"block":"none";
+});
+
+$("#saveSettingsBtn").addEventListener("click",async()=>{
+  if(!me) return showWho();
+  const schedules=readDaySchedules();
+  const activeDays=Object.keys(schedules).map(Number).filter(d=>schedules[d].active);
+  const fallback=schedules[activeDays[0]??1]||{start:"09:00",end:"18:00"};
+  try{
+    await api(`/members?id=eq.${encodeURIComponent(me)}`,{
+      method:"PATCH",
+      body:JSON.stringify({
+        work_start:fallback.start||"09:00",
+        work_end:fallback.end||"18:00",
+        lunch_start:$("#lunchStart")?.value||"12:00",
+        lunch_end:$("#lunchEnd")?.value||"13:00",
+        work_days:activeDays,
+        updated_at:new Date().toISOString()
+      })
+    });
+    memberModes[me]=$("#activityType")?.value||"work";
+    sharedMeta.customModes=sharedMeta.customModes||{};
+    if(memberModes[me]==="custom") sharedMeta.customModes[me]=($("#settingsCustomMode")?.value||"").trim()||"기타중";
+    else delete sharedMeta.customModes[me];
+    sharedMeta.daySchedules=sharedMeta.daySchedules||{};
+    sharedMeta.daySchedules[me]=schedules;
+    localStorage.setItem("workbuddy_mode",memberModes[me]);
+    await saveBoard();
+    $("#settingsMsg").innerHTML='<div class="success">저장됐어요.</div>';
+    await loadMembers();
+  }catch(e){
+    $("#settingsMsg").innerHTML='<div class="error">저장 실패: '+escapeHtml(e.message)+'</div>';
+  }
+});
+
+const canvas=$("#board"), ctx=canvas.getContext("2d");
+function fitCanvas(){
+  const r=canvas.getBoundingClientRect();
+  const canvasDoc=canvas.ownerDocument;
+  const canvasWin=canvasDoc.defaultView || window;
+  const dpr=Math.max(1,canvasWin.devicePixelRatio||1);
+  canvas.width=Math.round(r.width*dpr);
+  canvas.height=Math.round(r.height*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  redraw();
+}
+function redraw(){
+  const r=canvas.getBoundingClientRect();
+  const canvasDoc=canvas.ownerDocument;
+  const canvasWin=canvasDoc.defaultView || window;
+  ctx.clearRect(0,0,r.width,r.height);
+  ctx.lineCap="round";ctx.lineJoin="round";
+  strokes.forEach(s=>{
+    if(!s.points || s.points.length<1) return;
+    ctx.beginPath();
+    ctx.strokeStyle=s.erase ? "#ffffff" : s.color;
+    ctx.lineWidth=s.erase ? 16 : 4;
+    ctx.moveTo(s.points[0].x*r.width,s.points[0].y*r.height);
+    s.points.slice(1).forEach(p=>ctx.lineTo(p.x*r.width,p.y*r.height));
+    ctx.stroke();
+  });
+}
+function pos(e){ const r=canvas.getBoundingClientRect();
+  const canvasDoc=canvas.ownerDocument;
+  const canvasWin=canvasDoc.defaultView || window;
+  return {x:(e.clientX-r.left)/Math.max(1,r.width),y:(e.clientY-r.top)/Math.max(1,r.height)};
+}
+canvas.addEventListener("pointerdown",e=>{
+  drawing=true; canvas.setPointerCapture(e.pointerId);
+  currentStroke={color:currentColor,erase:eraser,points:[pos(e)]};
+  strokes.push(currentStroke); redraw();
+});
+canvas.addEventListener("pointermove",e=>{
+  if(!drawing||!currentStroke) return;
+  currentStroke.points.push(pos(e)); redraw();
+});
+canvas.addEventListener("pointerup",()=>{drawing=false;currentStroke=null;scheduleBoardSave();});
+canvas.addEventListener("pointercancel",()=>{drawing=false;currentStroke=null;});
+
+$$(".color").forEach(b=>b.addEventListener("click",()=>{
+  eraser=false; currentColor=b.dataset.color;
+  $$(".color").forEach(x=>x.classList.toggle("active",x===b));
+}));
+$("#eraserBtn").addEventListener("click",()=>{eraser=true;$$(".color").forEach(x=>x.classList.remove("active"));});
+$("#clearBtn").addEventListener("click",()=>{
+  
+    strokes=[]; redraw(); scheduleBoardSave(true);
+  
+});
+function scheduleBoardSave(immediate=false){
+  clearTimeout(boardSaveTimer);
+  boardSaveTimer=setTimeout(saveBoard, immediate?0:500);
+}
+async function saveBoard(){
+  try{
+    await api("/doodle_board?id=eq.1",{
+      method:"PATCH",
+      body:JSON.stringify({
+        drawing:{
+          strokes:strokes,
+          modes:memberModes,
+          reactions:sharedMeta.reactions||{},
+          deletedIds:sharedMeta.deletedIds||[],
+          customModes:sharedMeta.customModes||{},
+          daySchedules:sharedMeta.daySchedules||{}
+        },
+        updated_at:new Date().toISOString()
+      })
+    });
+    boardDirty=false;
+    $("#boardMsg").innerHTML='<div class="success">낙서 저장됨</div>';
+  }catch(e){
+    console.error("board save failed",e);
+    $("#boardMsg").innerHTML='<div class="error">낙서 저장 실패</div>';
+    throw e;
+  }
+}
+async function loadBoard(){
+  if(drawing) return;
+  const data=await api("/doodle_board?id=eq.1&select=drawing");
+  const incoming = data?.[0]?.drawing;
+  if(Array.isArray(incoming)){
+    strokes=incoming;
+    memberModes = {};
+    redraw();
+  } else if(incoming && typeof incoming === "object"){
+    strokes = Array.isArray(incoming.strokes) ? incoming.strokes : [];
+    memberModes = Object.assign({}, incoming.modes || {});
+    sharedMeta.reactions = incoming.reactions && typeof incoming.reactions === "object" ? incoming.reactions : {};
+    sharedMeta.deletedIds = Array.isArray(incoming.deletedIds) ? incoming.deletedIds : [];
+
+    sharedMeta.customModes = incoming.customModes && typeof incoming.customModes === "object" ? incoming.customModes : {};
+    sharedMeta.daySchedules = incoming.daySchedules && typeof incoming.daySchedules === "object" ? incoming.daySchedules : {};
+    redraw();
+  }
+}
+
+
+function weekStart(d=new Date()){ const x=new Date(d); const day=(x.getDay()+6)%7; x.setHours(0,0,0,0); x.setDate(x.getDate()-day); return x; }
+function scheduledWorkedMs(m,now=new Date()){
+  if(!m) return 0;
+  const ls=minutesOf(m.lunch_start),le=minutesOf(m.lunch_end),start=weekStart(now);
+  let total=0;
+  for(let i=0;i<7;i++){
+    const date=new Date(start);date.setDate(start.getDate()+i);
+    if(date>now) break;
+    const sc=getDaySchedule(m,date.getDay());
+    if(!sc.active) continue;
+    const a=minutesOf(sc.start),b=minutesOf(sc.end);
+    let endMin=b;
+    if(date.toDateString()===now.toDateString()) endMin=Math.min(b,nowMinutes());
+    if(endMin<=a) continue;
+    let mins=endMin-a;
+    mins-=Math.max(0,Math.min(endMin,le)-Math.max(a,ls));
+    total+=Math.max(0,mins)*60000;
+  }
+  return total;
+}
+function overtimeMsFor(memberId, now=new Date()){
+  const start=weekStart(now); return overtimeRows.filter(r=>r.member_id===memberId&&new Date(r.started_at)>=start).reduce((sum,r)=>{ const a=new Date(r.started_at),b=r.ended_at?new Date(r.ended_at):now; return sum+Math.max(0,b-a); },0);
+}
+function updateWeeklyUI(members){
+  if(members&&members.length) lastMembers=members;
+  if(!me) return; const mine=(lastMembers||[]).find(x=>x.id===me); if(!mine) return; const total=scheduledWorkedMs(mine)+overtimeMsFor(me); const min=Math.floor(total/60000); $("#weeklyHours").textContent=`${Math.floor(min/60)}시간 ${String(min%60).padStart(2,"0")}분`; $("#legalWarning").style.display=total>40*3600000?"block":"none";
+  const active=activeOvertimeFor(me); if(active){ $("#overtimeLive").textContent=`야근 +${formatDurationMs(Date.now()-new Date(active.started_at).getTime())}`; $("#overtimeStartBtn").style.display="none"; $("#overtimeEndBtn").style.display="inline-block"; } else { $("#overtimeLive").textContent="야근 기록 없음"; $("#overtimeStartBtn").style.display="inline-block"; $("#overtimeEndBtn").style.display="none"; }
+}
+async function loadOvertime(){ overtimeRows=await api('/overtime?select=*&order=started_at.asc')||[]; return overtimeRows; }
+$("#memberManageTitle")?.addEventListener("click",()=>{ $("#memberManageBody")?.classList.toggle("open"); renderMemberManagerSafe(); });
+$("#deleteOthersBtn")?.addEventListener("click",deleteOthers);
+$("#weekTitle").addEventListener("click",()=>$("#weekBody").classList.toggle("open"));
+$("#overtimeStartBtn").addEventListener("click",async()=>{ if(!me)return showWho(); try{ await api('/overtime',{method:'POST',body:JSON.stringify({member_id:me,started_at:new Date().toISOString()})}); await loadAll(); }catch(e){$("#weekMsg").innerHTML='<div class="error">야근 시작 실패</div>';} });
+$("#overtimeEndBtn").addEventListener("click",async()=>{ const active=activeOvertimeFor(me); if(!active)return; try{ await api(`/overtime?id=eq.${active.id}`,{method:'PATCH',body:JSON.stringify({ended_at:new Date().toISOString()})}); await loadAll(); }catch(e){$("#weekMsg").innerHTML='<div class="error">야근 종료 실패</div>';} });
+$("#manualOtAdd").addEventListener("click",async()=>{ if(!me)return showWho(); const a=$("#manualOtStart").value,b=$("#manualOtEnd").value; if(!a||!b||b<=a){$("#weekMsg").innerHTML='<div class="error">시작/종료 시간을 확인해주세요.</div>';return;} const d=new Date(); const [ah,am]=a.split(':').map(Number),[bh,bm]=b.split(':').map(Number); const s1=new Date(d.getFullYear(),d.getMonth(),d.getDate(),ah,am),s2=new Date(d.getFullYear(),d.getMonth(),d.getDate(),bh,bm); try{ await api('/overtime',{method:'POST',body:JSON.stringify({member_id:me,started_at:s1.toISOString(),ended_at:s2.toISOString()})}); $("#weekMsg").innerHTML='<div class="success">추가됐어요.</div>'; await loadAll(); }catch(e){$("#weekMsg").innerHTML='<div class="error">추가 실패</div>';} });
+async function loadAll(first=false){
+  if(!me) return;
+  let members=[];
+  try{
+    await loadBoard();
+    await loadOvertime();
+    members=await api("/members?select=*&order=name.asc")||[];
+    lastMembers=members;
+    $("#connectionText").textContent=`${displayNameForMe()} · Supabase 연결됨`;
+    $("#connectionText").style.color="#39764a";
+  }catch(e){
+    $("#connectionText").textContent="연결 실패 · 잠시 후 다시 시도";
+    $("#connectionText").style.color="#a33";
+    if(first) console.error(e);
+    return;
+  }
+  try{renderMembers(members);}catch(e){console.error("renderMembers",e);}
+  try{
+    const mine=members.find(x=>x.id===me&&!sharedMeta.deletedIds.includes(x.id));
+    if(mine){localStorage.setItem("workbuddy_name",mine.name);fillSettings(mine);}
+  }catch(e){console.error("fillSettings",e);}
+  try{updateWeeklyUI(members);}catch(e){console.error("weekly",e);}
+}
+function startPolling(){
+  clearInterval(pollTimer);
+  pollTimer=setInterval(loadAll,3000);
+}
+
+async function heartbeat(){
+  if(!me) return;
+  try{
+    await api(`/members?id=eq.${encodeURIComponent(me)}`,{
+      method:"PATCH",
+      body:JSON.stringify({updated_at:new Date().toISOString()})
+    });
+  }catch(e){}
+}
+function startPresence(){
+  clearInterval(presenceTimer);
+  heartbeat();
+  presenceTimer=setInterval(heartbeat,15000);
+}
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) heartbeat(); });
+
+
+
+
+$("#deleteAccountBtn").addEventListener("click",async()=>{
+  if(!me) return; 
+  try{ await loadBoard(); if(!sharedMeta.deletedIds.includes(me)) sharedMeta.deletedIds.push(me); delete sharedMeta.reactions[me]; delete memberModes[me]; await saveBoard(); localStorage.removeItem("workbuddy_user"); localStorage.removeItem("workbuddy_name"); localStorage.removeItem("workbuddy_mode"); me=null; clearInterval(presenceTimer); showWho(); await loadBoard(); }catch(e){ $("#settingsMsg").innerHTML='<div class="error">계정 삭제 처리 실패</div>'; }
+});
+
+$("#pipBtn").addEventListener("click", async()=>{
+  const msg = $("#survivalMsg");
+  try{
+    if(!("documentPictureInPicture" in window)){
+      throw new Error("이 Chrome에서는 미니창 기능을 지원하지 않아요.");
+    }
+
+    const app = document.querySelector(".app");
+    const homeMarker = document.createComment("workbuddy-app-home");
+    app.parentNode.insertBefore(homeMarker, app);
+
+    const pipWindow = await documentPictureInPicture.requestWindow({width:260,height:410});
+
+    // 현재 페이지의 CSS만 복사하고, Netlify 페이지/툴바 자체를 다시 불러오지 않습니다.
+    [...document.styleSheets].forEach(sheet=>{
+      try{
+        const style = pipWindow.document.createElement("style");
+        style.textContent = [...sheet.cssRules].map(rule=>rule.cssText).join("\n");
+        pipWindow.document.head.appendChild(style);
+      }catch(e){
+        if(sheet.href){
+          const link = pipWindow.document.createElement("link");
+          link.rel = "stylesheet";
+          link.href = sheet.href;
+          pipWindow.document.head.appendChild(link);
+        }
+      }
+    });
+
+    pipWindow.document.documentElement.classList.add("pip-mode");
+    pipWindow.document.documentElement.dataset.theme = "dark";
+    pipWindow.document.body.style.margin = "0";
+    pipWindow.document.body.style.background = "var(--bg)";
+    pipWindow.document.body.style.overflowY = "auto";
+    pipWindow.document.body.appendChild(app);
+    const pipMsg = app.querySelector("#survivalMsg");
+    if(pipMsg) pipMsg.innerHTML="";
+    uiDoc = pipWindow.document;
+    applyTheme();
+
+    // 미니창 안에서는 '미니창으로 띄우기' 버튼이 필요 없습니다.
+    const pipButton = app.querySelector("#pipBtn");
+    if(pipButton) pipButton.style.display = "none";
+    fitCanvas();
+    setTimeout(()=>{ fitCanvas(); redraw(); }, 80);
+    setTimeout(fitCanvas, 180);
+
+    pipWindow.addEventListener("pagehide", ()=>{
+      if(homeMarker.parentNode){
+        homeMarker.parentNode.insertBefore(app, homeMarker.nextSibling);
+        homeMarker.remove();
+      }
+      uiDoc = document;
+      const pipButton = app.querySelector("#pipBtn");
+      if(pipButton) pipButton.style.display = "";
+      fitCanvas();
+    }, {once:true});
+
+    if(msg) msg.innerHTML="";
+  }catch(e){
+    console.warn("WorkBuddy PiP:", e);
+    if(msg) msg.innerHTML="";
+  }
+});
+
+
+const survivalInput = $("#survivalInput");
+if (survivalInput) {
+  survivalInput.addEventListener("keydown", (e)=>{
+    if(e.key === "Enter" && !e.isComposing){
+      e.preventDefault();
+      $("#survivalBtn")?.click();
+    }
+  });
+}
+
+
+const workbuddyApp = document.querySelector(".app");
+if(workbuddyApp){
+  workbuddyApp.addEventListener("input", (e)=>{
+    if(e.target && e.target.id==="survivalInput"){
+      const max = Number(e.target.maxLength) > 0 ? Number(e.target.maxLength) : 30;
+      const count = $("#survivalCount");
+      if(count) count.textContent = `${e.target.value.length} / ${max}`;
+    }
+  });
+}
+
+window.addEventListener("resize",fitCanvas);
+fitCanvas();
+loadBoard().then(()=>{ if(me) loadAll(true); });
+startPolling();
+startPresence();
+weeklyTimer=setInterval(()=>{ if(me){ renderMembers(lastMembers); updateWeeklyUI(lastMembers); } },1000);
+setInterval(()=>{ if(me) loadAll().catch(()=>{}); },60000);
+
+
+
+function todayScheduledWorkedMs(m,now=new Date()){
+  if(!m) return 0;
+  const sc=getDaySchedule(m,now.getDay());
+  if(!sc.active) return 0;
+  const a=minutesOf(sc.start),b=minutesOf(sc.end),ls=minutesOf(m.lunch_start),le=minutesOf(m.lunch_end);
+  const endMin=Math.min(b,nowMinutes());
+  if(endMin<=a) return 0;
+  let mins=endMin-a;
+  mins-=Math.max(0,Math.min(endMin,le)-Math.max(a,ls));
+  return Math.max(0,mins)*60000;
+}
+function todayOvertimeMs(memberId, now=new Date()){
+  const dayStart=new Date(now);
+  dayStart.setHours(0,0,0,0);
+  return overtimeRows
+    .filter(r=>r.member_id===memberId && new Date(r.started_at)>=dayStart)
+    .reduce((sum,r)=>{
+      const a=new Date(r.started_at);
+      const b=r.ended_at?new Date(r.ended_at):now;
+      return sum+Math.max(0,b-a);
+    },0);
+}
+
+async function toggleMiniOvertime(){
+  if(!me) return showWho();
+  const active=activeOvertimeFor(me);
+  try{
+    if(active){
+      await api(`/overtime?id=eq.${active.id}`,{
+        method:"PATCH",
+        body:JSON.stringify({ended_at:new Date().toISOString()})
+      });
+    }else{
+      await api('/overtime',{
+        method:'POST',
+        body:JSON.stringify({member_id:me,started_at:new Date().toISOString()})
+      });
+    }
+    await loadOvertime();
+    updateWeeklyUI(lastMembers);
+    syncMiniOvertime();
+    renderMembers(lastMembers);
+  }catch(e){
+    const msg=$("#weekMsg");
+    if(msg) msg.innerHTML='<div class="error">야근 기록 실패</div>';
+  }
+}
+
+$("#miniOvertimeBtn")?.addEventListener("click", toggleMiniOvertime);
+
+function syncMiniOvertime(){
+  const miniBtn=$("#miniOvertimeBtn");
+  const miniElapsed=$("#miniOvertimeElapsed");
+  const miniToday=$("#miniTodayTotal");
+  const miniWeek=$("#miniWeekTotal");
+  if(!miniBtn || !miniElapsed || !miniToday || !miniWeek) return;
+
+  const now=new Date();
+  const active=activeOvertimeFor(me);
+
+  if(active){
+    miniBtn.textContent="야근 종료";
+    miniElapsed.textContent=`야근 +${formatDurationMs(now-new Date(active.started_at).getTime())}`;
+  }else{
+    miniBtn.textContent="야근 시작";
+    miniElapsed.textContent="야근 +00:00:00";
+  }
+
+  const mine=(lastMembers||[]).find(x=>x.id===me);
+  const todayTotal=todayScheduledWorkedMs(mine,now)+todayOvertimeMs(me,now);
+  const totalMin=Math.floor(todayTotal/60000);
+  miniToday.textContent=`${Math.floor(totalMin/60)}시간 ${String(totalMin%60).padStart(2,"0")}분`;
+  syncMiniWeeklyFromFull();
+}
+
+setInterval(syncMiniOvertime,1000);
+
+
+
+function enlargeWeeklyTexts(){
+  const candidates = [
+    $("#weekTotal"), $("#weekTotalTime"), $("#weekOvertimeText"), $("#overtimeSummary")
+  ].filter(Boolean);
+  candidates.forEach(el=>{
+    el.style.fontSize="12px";
+    el.style.lineHeight="1.4";
+  });
+  document.querySelectorAll(".overtime-summary,.overtime-empty,.week-total-time").forEach(el=>{
+    el.style.fontSize="12px";
+    el.style.lineHeight="1.4";
+  });
+}
+setTimeout(enlargeWeeklyTexts,0);
+
+
+
+function matchWeeklyTextToStatus(){
+  const stateEl = document.querySelector(".state");
+  if(!stateEl) return;
+  const size = getComputedStyle(stateEl).fontSize;
+  const selectors = [
+    "#weekTotal","#weekTotalTime","#weekOvertimeText","#overtimeSummary",
+    ".week-total-time",".overtime-summary",".overtime-empty",
+    "#weekCard .muted","#weekBody .muted"
+  ];
+  document.querySelectorAll(selectors.join(",")).forEach(el=>{
+    el.style.setProperty("font-size",size,"important");
+    el.style.setProperty("line-height","1.2","important");
+  });
+}
+setTimeout(matchWeeklyTextToStatus,100);
+setInterval(matchWeeklyTextToStatus,2000);
+
+
+
+function forceExactWeeklyFont(){
+  const stateEl = document.querySelector(".state");
+  if(!stateEl) return;
+  const size = getComputedStyle(stateEl).fontSize;
+  const weekTotal = document.querySelector("#weekTotal");
+  if(weekTotal) weekTotal.style.setProperty("font-size", size, "important");
+  document.querySelectorAll("#weekList, #weekList .muted, #weekList > div").forEach(el=>{
+    el.style.setProperty("font-size", size, "important");
+    el.style.setProperty("line-height", "1.2", "important");
+  });
+}
+setInterval(forceExactWeeklyFont,500);
+setTimeout(forceExactWeeklyFont,50);
+
+
+function forceActualWeeklyFont(){
+  const stateEl=document.querySelector('.state');
+  if(!stateEl) return;
+  const size=getComputedStyle(stateEl).fontSize;
+  ['#weeklyHours','#overtimeLive'].forEach(sel=>{
+    const el=document.querySelector(sel);
+    if(el){
+      el.style.setProperty('font-size',size,'important');
+      el.style.setProperty('line-height','1.2','important');
+    }
+  });
+}
+setTimeout(forceActualWeeklyFont,50);
+setInterval(forceActualWeeklyFont,1000);
+
+
+
+function syncMiniWeeklyFromFull(){
+  const mini=$("#miniWeekTotal");
+  const full=$("#weeklyHours");
+  if(!mini || !full) return;
+  const txt=(full.textContent||"").trim();
+  if(txt) mini.textContent=txt;
+}
+setInterval(syncMiniWeeklyFromFull,500);
+setTimeout(syncMiniWeeklyFromFull,100);
+
+
+
+
+
+
+
+setInterval(()=>{ try{ renderMemberManagerSafe(); }catch(_){ } },1500);
+
+</script>
+</body>
+</html>
