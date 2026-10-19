@@ -918,6 +918,9 @@ const headers = {
   "Prefer": "return=representation"
 };
 if(sessionToken) headers["x-workbuddy-session"] = sessionToken;
+window.addEventListener("storage", e=>{
+  if(e.key==="workbuddy_session" && e.newValue!==sessionToken) location.reload();
+});
 
 let uiDoc = document;
 const $ = s => (uiDoc || document).querySelector(s) || document.querySelector(s);
@@ -957,7 +960,6 @@ function hideWho(){
   $("#whoInvite").value = "";
 }
 function clearSession(){
-  window.documentPictureInPicture?.window?.close();
   me=null;
   sessionToken=null;
   lastMembers=[];
@@ -993,9 +995,8 @@ async function enterAccount(register){
     $("#whoMsg").innerHTML='<div class="error">새 계정에는 친구 초대코드가 필요해요.</div>';
     return;
   }
-  // PiP must be requested during the login click; browsers reject it after network awaits.
-  const hadMini=!!window.documentPictureInPicture?.window;
-  const pendingMini=requestMiniWindow();
+  // Open during the click so popup blockers allow the independent mini window.
+  const miniWindow=IS_DESKTOP ? null : requestMiniWindow();
   try{
     const result=await api(`/rpc/workbuddy_${register?"register":"login"}`,{
       method:"POST", body:JSON.stringify(register?{p_name:name,p_pin:pin,p_invite:invite}:{p_name:name,p_pin:pin})
@@ -1019,9 +1020,10 @@ async function enterAccount(register){
     hideWho();
     await loadAll(true);
     startPresence();
-    moveToMiniWindow(await pendingMini);
+    if(miniWindow && !miniWindow.closed) openMiniApp(miniWindow);
+    else if(!IS_DESKTOP) alert("미니창이 차단됐어요. 팝업을 허용하고 '미니창으로 띄우기'를 눌러 주세요.");
   }catch(e){
-    if(!hadMini) (await pendingMini)?.close();
+    miniWindow?.close();
     $("#whoMsg").innerHTML='<div class="error">'+(register?'가입':'로그인')+' 실패: '+escapeHtml(e.message)+'</div>';
   }
 }
@@ -1499,67 +1501,18 @@ $("#deleteAccountBtn").addEventListener("click",async()=>{
 });
 
 function requestMiniWindow(){
-  if(!("documentPictureInPicture" in window)) return Promise.resolve(null);
-  if(documentPictureInPicture.window) return Promise.resolve(documentPictureInPicture.window);
-  return documentPictureInPicture.requestWindow({width:260,height:410}).catch(e=>{
-    console.warn("WorkBuddy PiP:",e);
-    return null;
-  });
+  return window.open("about:blank", "_blank", "popup,width=300,height=500");
 }
-function moveToMiniWindow(pipWindow){
-    if(!pipWindow || uiDoc===pipWindow.document) return;
-    const app = document.querySelector(".app");
-    const homeMarker = document.createComment("workbuddy-app-home");
-    app.parentNode.insertBefore(homeMarker, app);
-
-    // 현재 페이지의 CSS만 복사하고, Netlify 페이지/툴바 자체를 다시 불러오지 않습니다.
-    [...document.styleSheets].forEach(sheet=>{
-      try{
-        const style = pipWindow.document.createElement("style");
-        style.textContent = [...sheet.cssRules].map(rule=>rule.cssText).join("\n");
-        pipWindow.document.head.appendChild(style);
-      }catch(e){
-        if(sheet.href){
-          const link = pipWindow.document.createElement("link");
-          link.rel = "stylesheet";
-          link.href = sheet.href;
-          pipWindow.document.head.appendChild(link);
-        }
-      }
-    });
-
-    pipWindow.document.documentElement.classList.add("pip-mode");
-    pipWindow.document.documentElement.dataset.theme = "dark";
-    pipWindow.document.body.style.margin = "0";
-    pipWindow.document.body.style.background = "var(--bg)";
-    pipWindow.document.body.style.overflowY = "auto";
-    pipWindow.document.body.appendChild(app);
-    const pipMsg = app.querySelector("#survivalMsg");
-    if(pipMsg) pipMsg.innerHTML="";
-    uiDoc = pipWindow.document;
-    applyTheme();
-
-    // 미니창 안에서는 '미니창으로 띄우기' 버튼이 필요 없습니다.
-    const pipButton = app.querySelector("#pipBtn");
-    if(pipButton) pipButton.style.display = "none";
-    fitCanvas();
-    setTimeout(()=>{ fitCanvas(); redraw(); }, 80);
-    setTimeout(fitCanvas, 180);
-
-    pipWindow.addEventListener("pagehide", ()=>{
-      if(homeMarker.parentNode){
-        homeMarker.parentNode.insertBefore(app, homeMarker.nextSibling);
-        homeMarker.remove();
-      }
-      uiDoc = document;
-      const pipButton = app.querySelector("#pipBtn");
-      if(pipButton) pipButton.style.display = "";
-      fitCanvas();
-    }, {once:true});
-
+function openMiniApp(miniWindow){
+  const url=new URL(location.href);
+  url.searchParams.set("desktop", "1");
+  miniWindow.opener=null;
+  miniWindow.location.replace(url.href);
 }
-$("#pipBtn").addEventListener("click", async()=>{
-  moveToMiniWindow(await requestMiniWindow());
+$("#pipBtn").addEventListener("click", ()=>{
+  const miniWindow=requestMiniWindow();
+  if(miniWindow) openMiniApp(miniWindow);
+  else alert("미니창이 차단됐어요. 브라우저에서 팝업을 허용해 주세요.");
 });
 
 
