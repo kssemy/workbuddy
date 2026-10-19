@@ -721,7 +721,7 @@ html[data-theme="dark"] #board{
 <div id="whoOverlay" class="who-overlay" style="display:none">
   <div class="who-box">
     <div class="title">WorkBuddy 로그인</div>
-    <div class="muted" style="margin-top:4px">닉네임과 숫자 6자리 PIN으로 다시 접속할 수 있어요.</div>
+    <div class="muted" style="margin-top:4px">처음에는 직접 정한 PIN 6자리와 친구 초대코드로 가입해요. 다음부터는 닉네임과 PIN으로 로그인하세요.</div>
     <div class="who-form">
       <input id="whoName" maxlength="12" autocomplete="username" placeholder="닉네임">
       <input id="whoPin" type="password" inputmode="numeric" maxlength="6" autocomplete="current-password" placeholder="PIN 6자리">
@@ -735,8 +735,8 @@ html[data-theme="dark"] #board{
       <input id="whoCustomMode" class="custom-mode-input" maxlength="10" placeholder="예: 운동중, 회의중" style="display:none">
       <div class="who-actions">
         <button id="whoCancelBtn" class="btn secondary" type="button">취소</button>
-        <button id="whoRegisterBtn" class="btn secondary" type="button">새 계정</button>
-        <button id="whoSaveBtn" class="btn" type="button">로그인</button>
+        <button id="whoRegisterBtn" class="btn secondary" type="button">처음 가입</button>
+        <button id="whoSaveBtn" class="btn" type="button">로그인 / 가입</button>
       </div>
       <div id="whoMsg"></div>
     </div>
@@ -982,6 +982,7 @@ async function enterAccount(register){
   const name = $("#whoName").value.trim();
   const pin = $("#whoPin").value.trim();
   const invite = $("#whoInvite").value.trim();
+  register = register || !!invite;
   const mode = $("#whoMode").value;
   const customMode=($("#whoCustomMode")?.value||"").trim();
   if(!name || name.length>12 || !/^\d{6}$/.test(pin)){
@@ -1021,7 +1022,7 @@ async function enterAccount(register){
     moveToMiniWindow(await pendingMini);
   }catch(e){
     if(!hadMini) (await pendingMini)?.close();
-    $("#whoMsg").innerHTML='<div class="error">로그인 실패: '+escapeHtml(e.message)+'</div>';
+    $("#whoMsg").innerHTML='<div class="error">'+(register?'가입':'로그인')+' 실패: '+escapeHtml(e.message)+'</div>';
   }
 }
 $("#whoSaveBtn").addEventListener("click",()=>enterAccount(false));
