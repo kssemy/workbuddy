@@ -720,10 +720,12 @@ html[data-theme="dark"] #board{
 <script>document.documentElement.dataset.theme="dark";</script>
 <div id="whoOverlay" class="who-overlay" style="display:none">
   <div class="who-box">
-    <div class="title">내 정보</div>
-    <div class="muted" style="margin-top:4px">처음 한 번만 정하면 이 브라우저에 기억됩니다.</div>
+    <div class="title">WorkBuddy 로그인</div>
+    <div class="muted" style="margin-top:4px">닉네임과 숫자 6자리 PIN으로 다시 접속할 수 있어요.</div>
     <div class="who-form">
-      <input id="whoName" maxlength="12" placeholder="이름을 입력하세요">
+      <input id="whoName" maxlength="12" autocomplete="username" placeholder="닉네임">
+      <input id="whoPin" type="password" inputmode="numeric" maxlength="6" autocomplete="current-password" placeholder="PIN 6자리">
+      <input id="whoInvite" type="password" autocomplete="off" placeholder="새 계정용 친구 초대코드">
       <select id="whoMode">
         <option value="work">업무중</option>
         <option value="study">공부중</option>
@@ -733,7 +735,8 @@ html[data-theme="dark"] #board{
       <input id="whoCustomMode" class="custom-mode-input" maxlength="10" placeholder="예: 운동중, 회의중" style="display:none">
       <div class="who-actions">
         <button id="whoCancelBtn" class="btn secondary" type="button">취소</button>
-        <button id="whoSaveBtn" class="btn" type="button">시작</button>
+        <button id="whoRegisterBtn" class="btn secondary" type="button">새 계정</button>
+        <button id="whoSaveBtn" class="btn" type="button">로그인</button>
       </div>
       <div id="whoMsg"></div>
     </div>
@@ -749,7 +752,7 @@ html[data-theme="dark"] #board{
       </div>
       <div style="display:flex;gap:4px">
         <button id="pipBtn" class="btn pip-btn">미니창으로 띄우기</button>
-        <button id="changeUserBtn" class="btn secondary">사용자 변경</button>
+        <button id="changeUserBtn" class="btn secondary">계정 전환</button>
       </div>
     </div>
   </div>
@@ -800,31 +803,20 @@ html[data-theme="dark"] #board{
       <span id="miniWeekTotal">0시간 00분</span>
     </div>
     <div class="mini-overtime-row" id="miniOvertimeRow">
-      <button class="btn" id="miniOvertimeBtn" type="button">야근 시작</button>
+      <button class="btn" id="miniOvertimeBtn" type="button">퇴근</button>
       <span id="miniOvertimeElapsed">야근 +00:00:00</span>
     </div>
   </div>
-  <div class="card pip-hide">
-    <div id="memberManageTitle" class="accordion-title">
-      <div class="title">인원 관리</div><div>⌄</div>
-    </div>
-    <div id="memberManageBody" class="accordion-body">
-      <div class="member-manager-toolbar"><button id="deleteOthersBtn" class="btn danger" type="button">나 제외 전체 삭제</button></div>
-      <div id="memberManager"></div>
-      <div id="memberManagerMsg"></div>
-    </div>
-  </div>
-
 <div class="card pip-hide">
     <div id="weekTitle" class="accordion-title">
       <div class="title">이번 주 · 야근</div><div>⌄</div>
     </div>
     <div id="weekBody" class="accordion-body">
       <div class="tiny-row"><span>이번 주 총 근무</span><span id="weeklyHours" class="weekly-value">0시간 00분</span></div>
-      <div id="legalWarning" class="legal-warning" style="display:none;margin-top:3px">법정 근로시간 초과</div>
+      <div id="legalWarning" class="legal-warning" style="display:none;margin-top:3px">이번 주 40시간 초과</div>
       <div class="overtime-box">
         <div id="overtimeLive" class="overtime-live-big">야근 기록 없음</div>
-        <div class="save-row"><button id="overtimeStartBtn" class="btn" type="button">야근 시작</button><button id="overtimeEndBtn" class="btn secondary" type="button" style="display:none">야근 종료</button></div>
+        <div class="save-row"><button id="overtimeEndBtn" class="btn secondary" type="button" style="display:none">퇴근</button></div>
         <div style="margin-top:7px" class="muted">오늘 야근 수동 입력</div>
         <div class="manual-row" style="margin-top:4px"><div><label>시작</label><input id="manualOtStart" type="time"></div><div><label>종료</label><input id="manualOtEnd" type="time"></div><button id="manualOtAdd" class="btn secondary" type="button">추가</button></div>
         <div id="weekMsg"></div>
@@ -898,7 +890,8 @@ if(IS_DESKTOP) document.documentElement.classList.add("pip-mode");
 const SUPABASE_URL = "https://tgyfscvjnkaiykyfyzcc.supabase.co";
 const SUPABASE_KEY = "sb_publishable_4bdFjW6A7ahg9AaaV8AetQ_KEFbNYvw";
 const API = SUPABASE_URL + "/rest/v1";
-let me = localStorage.getItem("workbuddy_user");
+let sessionToken = localStorage.getItem("workbuddy_session");
+let me = sessionToken ? localStorage.getItem("workbuddy_user") : null;
 let pollTimer = null;
 let boardDirty = false;
 let boardSaveTimer = null;
@@ -910,6 +903,7 @@ let currentColor = "#F3B6C6";
 let eraser = false;
 let presenceTimer = null;
 let overtimeRows = [];
+let attendanceRows = [];
 let sharedMeta = {reactions:{},deletedIds:[],customStatuses:{},customModes:{},daySchedules:{}};
 
 let previousOnline = {};
@@ -923,9 +917,10 @@ const headers = {
   "Content-Type": "application/json",
   "Prefer": "return=representation"
 };
+if(sessionToken) headers["x-workbuddy-session"] = sessionToken;
 
 let uiDoc = document;
-const $ = s => (uiDoc || document).querySelector(s);
+const $ = s => (uiDoc || document).querySelector(s) || document.querySelector(s);
 const $$ = s => Array.from((uiDoc || document).querySelectorAll(s));
 
 function applyTheme(){
@@ -945,6 +940,7 @@ function displayNameForMe(){
 function showWho(){
   $("#whoOverlay").style.display = "flex";
   $("#whoName").value = displayNameForMe();
+  $("#whoPin").value = "";
   $("#whoMode").value = (me && memberModes[me]) || localStorage.getItem("workbuddy_mode") || "work";
   const cm=(me && sharedMeta.customModes?.[me]) || localStorage.getItem("workbuddy_custom_mode") || "";
   if($("#whoCustomMode")){
@@ -957,80 +953,79 @@ function showWho(){
 function hideWho(){
   $("#whoOverlay").style.display = "none";
   $("#whoMsg").innerHTML = "";
+  $("#whoPin").value = "";
+  $("#whoInvite").value = "";
 }
-function makeMemberId(){
-  if(window.crypto && crypto.randomUUID) return "u_" + crypto.randomUUID().replace(/-/g,"");
-  return "u_" + Date.now().toString(36) + Math.random().toString(36).slice(2,10);
+function clearSession(){
+  window.documentPictureInPicture?.window?.close();
+  me=null;
+  sessionToken=null;
+  lastMembers=[];
+  attendanceRows=[];
+  overtimeRows=[];
+  strokes=[];
+  delete headers["x-workbuddy-session"];
+  ["workbuddy_session","workbuddy_user","workbuddy_name","workbuddy_mode","workbuddy_custom_mode"].forEach(key=>localStorage.removeItem(key));
+  clearInterval(presenceTimer);
+  redraw();
+  $("#members").innerHTML="";
+  showWho();
 }
 if(!me) showWho();
 
 $("#whoCancelBtn").addEventListener("click", hideWho);
 $("#whoName").addEventListener("keydown", e=>{ if(e.key==="Enter") $("#whoSaveBtn").click(); });
+$("#whoPin").addEventListener("keydown", e=>{ if(e.key==="Enter") $("#whoSaveBtn").click(); });
+$("#whoInvite").addEventListener("keydown", e=>{ if(e.key==="Enter") $("#whoRegisterBtn").click(); });
 
-$("#whoSaveBtn").addEventListener("click", async()=>{
+async function enterAccount(register){
   const name = $("#whoName").value.trim();
+  const pin = $("#whoPin").value.trim();
+  const invite = $("#whoInvite").value.trim();
   const mode = $("#whoMode").value;
   const customMode=($("#whoCustomMode")?.value||"").trim();
-  if(!name){
-    $("#whoMsg").innerHTML='<div class="error">이름을 입력해주세요.</div>';
+  if(!name || name.length>12 || !/^\d{6}$/.test(pin)){
+    $("#whoMsg").innerHTML='<div class="error">닉네임(1~12자)과 숫자 PIN 6자리를 입력해 주세요.</div>';
     return;
   }
-  if(name.length > 12){
-    $("#whoMsg").innerHTML='<div class="error">이름은 12자까지 가능해요.</div>';
+  if(register && !invite){
+    $("#whoMsg").innerHTML='<div class="error">새 계정에는 친구 초대코드가 필요해요.</div>';
     return;
   }
+  // PiP must be requested during the login click; browsers reject it after network awaits.
+  const hadMini=!!window.documentPictureInPicture?.window;
+  const pendingMini=requestMiniWindow();
   try{
-    const all = await api("/members?select=id,name");
-    const duplicate = (all||[]).find(x=>!sharedMeta.deletedIds.includes(x.id) && String(x.name).trim().toLowerCase()===name.toLowerCase() && x.id!==me);
-    if(duplicate){
-      if(IS_DESKTOP && !me){
-        // 브라우저와 데스크톱 앱은 저장 공간이 달라서, 첫 실행 때 기존 이름의 ID를 이어받는다.
-        me=duplicate.id;
-      }else{
-        $("#whoMsg").innerHTML='<div class="error">이미 사용 중인 이름이에요. 다른 이름을 골라주세요.</div>';
-        return;
-      }
-    }
-
-    if(!me){
-      me = makeMemberId();
-      await api("/members",{
-        method:"POST",
-        body:JSON.stringify({
-          id:me,
-          name,
-          work_start:"09:00",
-          work_end:"18:00",
-          lunch_start:"12:00",
-          lunch_end:"13:00",
-          work_days:[1,2,3,4,5],
-          updated_at:new Date().toISOString()
-        })
-      });
-    }else{
-      await api(`/members?id=eq.${encodeURIComponent(me)}`,{
-        method:"PATCH",
-        body:JSON.stringify({name,updated_at:new Date().toISOString()})
-      });
-    }
-
+    const result=await api(`/rpc/workbuddy_${register?"register":"login"}`,{
+      method:"POST", body:JSON.stringify(register?{p_name:name,p_pin:pin,p_invite:invite}:{p_name:name,p_pin:pin})
+    });
+    if(result.error) throw new Error(result.error);
+    sessionToken=result.session_token;
+    me=result.member_id;
+    headers["x-workbuddy-session"]=sessionToken;
+    localStorage.setItem("workbuddy_session",sessionToken);
+    const boardReady=await loadBoard().then(()=>true,()=>false);
     memberModes[me] = mode;
     sharedMeta.customModes=sharedMeta.customModes||{};
     if(mode==="custom") sharedMeta.customModes[me]=customMode||"기타중";
     else delete sharedMeta.customModes[me];
     localStorage.setItem("workbuddy_user", me);
-    localStorage.setItem("workbuddy_name", name);
+    localStorage.setItem("workbuddy_name", result.name);
     localStorage.setItem("workbuddy_mode", mode);
     if(mode==="custom") localStorage.setItem("workbuddy_custom_mode",customMode||"기타중");
     else localStorage.removeItem("workbuddy_custom_mode");
-    await saveBoard();
+    if(boardReady) await saveBoard().catch(()=>{});
     hideWho();
     await loadAll(true);
     startPresence();
+    moveToMiniWindow(await pendingMini);
   }catch(e){
-    $("#whoMsg").innerHTML='<div class="error">저장 실패: '+escapeHtml(e.message)+'</div>';
+    if(!hadMini) (await pendingMini)?.close();
+    $("#whoMsg").innerHTML='<div class="error">로그인 실패: '+escapeHtml(e.message)+'</div>';
   }
-});
+}
+$("#whoSaveBtn").addEventListener("click",()=>enterAccount(false));
+$("#whoRegisterBtn").addEventListener("click",()=>enterAccount(true));
 $("#changeUserBtn").addEventListener("click", showWho);
 
 async function api(path, options={}){
@@ -1054,7 +1049,7 @@ function nowMinutes(){ const d=new Date(); return d.getHours()*60+d.getMinutes()
 
 
 function getDaySchedule(m,day){
-  const saved=sharedMeta.daySchedules?.[m.id]?.[day];
+  const saved=m.day_schedules?.[day];
   const activeDefault=(m.work_days||[1,2,3,4,5]).includes(day);
   return {
     active:saved ? saved.active!==false : activeDefault,
@@ -1096,13 +1091,21 @@ function memberState(m){
   if(!sc.active) return {label:endLabel,sub:"",done:true};
   const n=nowMinutes(),ws=minutesOf(sc.start),we=minutesOf(sc.end),ls=minutesOf(m.lunch_start),le=minutesOf(m.lunch_end);
   if(n<ws) return {label:beforeLabel,sub:`${sc.start} 시작`,done:false};
-  if(n>=we) return {label:endLabel,sub:"",done:true};
+  if(n>=we) return activeOvertimeFor(m.id)
+    ? {label:"야근중",sub:"",done:false} : {label:endLabel,sub:"",done:true};
   if(mode==="work"&&n>=ls&&n<le) return {label:"점심먹는중",sub:`${le-n}분 남음`,done:false};
   const left=we-n;
   return {label:activeLabel,sub:`${leftWord} ${Math.floor(left/60)}시간 ${left%60}분`,done:false};
 }
 function activeOvertimeFor(memberId){
-  return overtimeRows.find(r=>r.member_id===memberId && !r.ended_at) || null;
+  const shift=activeAttendanceFor(memberId);
+  const member=lastMembers.find(m=>m.id===memberId);
+  if(!shift || !member) return null;
+  const end=scheduleDate(member,new Date(shift.work_date+"T00:00:00"),"end");
+  return Date.now()>=end ? {member_id:memberId,started_at:new Date(Math.max(end,new Date(shift.started_at).getTime())).toISOString()} : null;
+}
+function activeAttendanceFor(memberId){
+  return attendanceRows.find(r=>r.member_id===memberId && !r.ended_at && Date.now()-new Date(r.last_seen_at).getTime()<35000) || null;
 }
 function formatDurationMs(ms){ const total=Math.max(0,Math.floor(ms/1000)); const h=Math.floor(total/3600); const m=Math.floor((total%3600)/60); const sec=total%60; return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`; }
 
@@ -1136,7 +1139,7 @@ function renderMembers(members){
     previousOnline[m.id]=isOnline;
     const justJoined=isOnline&&joinedUntil[m.id]&&joinedUntil[m.id]>now;
     const ot=activeOvertimeFor(m.id);
-    let right=st.sub;
+    let right=escapeHtml(st.sub);
     if(ot){ right=`<span class="overtime-live">야근 +${formatDurationMs(now-new Date(ot.started_at).getTime())}</span>`; }
     let bubble="";
     if(m.survival_message&&m.survival_expires_at&&new Date(m.survival_expires_at)>new Date()){
@@ -1145,7 +1148,7 @@ function renderMembers(members){
       const count=(valid.users||[]).length;
       bubble=`<div class="bubble" style="background:${pastelForMessage(m.id,m.survival_expires_at)};color:#333" data-react-id="${escapeHtml(m.id)}" data-react-key="${escapeHtml(m.survival_expires_at)}" title="클릭해서 ♥">${escapeHtml(m.survival_message)}</div><span class="heart" data-react-id="${escapeHtml(m.id)}" data-react-key="${escapeHtml(m.survival_expires_at)}">♥${count?count:""}</span>`;
     }
-    return `<div class="member ${st.done&&!ot?"done":""}"><div class="member-left"><span class="status-dot ${isOnline?"online":""}"></span><span class="name">${escapeHtml(m.name)}</span><span class="state">${ot?"야근중":st.label}</span>${justJoined?'<span class="joined">방금 들어옴</span>':""}</div><div class="bubble-slot">${bubble}</div><div class="time-left">${right}</div></div>`;
+    return `<div class="member ${st.done&&!ot?"done":""}"><div class="member-left"><span class="status-dot ${isOnline?"online":""}"></span><span class="name">${escapeHtml(m.name)}</span><span class="state">${escapeHtml(ot?"야근중":st.label)}</span>${justJoined?'<span class="joined">방금 들어옴</span>':""}</div><div class="bubble-slot">${bubble}</div><div class="time-left">${right}</div></div>`;
   }).join("");
   $("#onlineCount").textContent=`${onlineCount}명 접속 중`;
   $$('[data-react-id]').forEach(el=>el.addEventListener('click',()=>toggleReaction(el.dataset.reactId,el.dataset.reactKey)));
@@ -1158,81 +1161,6 @@ function pastelForMessage(memberId,key){
   for(const ch of seed) h=((h<<5)-h)+ch.charCodeAt(0);
   return colors[Math.abs(h)%colors.length];
 }
-
-function renderMemberManagerSafe(){
-  const box=$("#memberManager");
-  if(!box) return;
-  const now=Date.now();
-  const arr=(lastMembers||[]).filter(m=>!sharedMeta.deletedIds.includes(m.id)).sort((a,b)=>{
-    const ao=!!(a.updated_at&&(now-new Date(a.updated_at).getTime()<35000));
-    const bo=!!(b.updated_at&&(now-new Date(b.updated_at).getTime()<35000));
-    if(ao!==bo) return ao?-1:1;
-    if(a.id===me&&b.id!==me) return -1;
-    if(b.id===me&&a.id!==me) return 1;
-    return String(a.name||"").localeCompare(String(b.name||""),"ko");
-  });
-  box.innerHTML=arr.length?arr.map(m=>{
-    const online=!!(m.updated_at&&(now-new Date(m.updated_at).getTime()<35000));
-    const mode=memberModes[m.id]||"work";
-    const label=mode==="study"?"공부중":mode==="game"?"게임중":"업무중";
-    return `<div class="member-manager-row"><span class="status-dot ${online?"online":""}"></span><span class="member-manager-name">${escapeHtml(m.name)}</span><span class="member-manager-state">${label}</span><button class="member-manager-delete" type="button" data-manage-delete="${escapeHtml(m.id)}">삭제</button></div>`;
-  }).join(""):'<div class="muted">등록된 인원이 없습니다.</div>';
-  $$('[data-manage-delete]').forEach(btn=>btn.addEventListener('click',()=>deleteManagedMember(btn.dataset.manageDelete)));
-}
-
-async function deleteManagedMember(id){
-  if(!id) return;
-  const msg=$("#memberManagerMsg");
-  try{
-    await loadBoard();
-
-    // Supabase DELETE 권한 없이 WorkBuddy 내부에서 삭제 처리.
-    sharedMeta.deletedIds=sharedMeta.deletedIds||[];
-    if(!sharedMeta.deletedIds.includes(id)) sharedMeta.deletedIds.push(id);
-
-    if(sharedMeta.reactions) delete sharedMeta.reactions[id];
-    delete memberModes[id];
-    if(sharedMeta.customModes) delete sharedMeta.customModes[id];
-    if(sharedMeta.daySchedules) delete sharedMeta.daySchedules[id];
-
-    await saveBoard();
-
-    // 화면 목록에서도 즉시 제거
-    lastMembers=(lastMembers||[]).filter(m=>m.id!==id);
-
-    if(id===me){
-      localStorage.removeItem('workbuddy_user');
-      localStorage.removeItem('workbuddy_name');
-      localStorage.removeItem('workbuddy_mode');
-      localStorage.removeItem('workbuddy_custom_mode');
-      me=null;
-      clearInterval(presenceTimer);
-      showWho();
-    }
-
-    if(msg) msg.innerHTML='<div class="success">삭제됐어요. 같은 이름으로 다시 등록할 수 있어요.</div>';
-
-    renderMembers(lastMembers);
-    renderMemberManagerSafe();
-  }catch(e){
-    console.error('member soft delete failed',e);
-    if(msg) msg.innerHTML='<div class="error">삭제 실패: '+escapeHtml(e.message||String(e))+'</div>';
-  }
-}
-async function deleteOthers(){
-  const ids=[...(lastMembers||[])]
-    .map(m=>m.id)
-    .filter(id=>id!==me&&!sharedMeta.deletedIds.includes(id));
-
-  for(const id of ids){
-    await deleteManagedMember(id);
-  }
-
-  renderMembers(lastMembers||[]);
-  renderMemberManagerSafe();
-}
-
-
 
 async function toggleReaction(memberId,key){
   if(!me) return showWho();
@@ -1254,12 +1182,7 @@ async function loadMembers(){
     localStorage.setItem("workbuddy_name", mine.name);
     fillSettings(mine);
   }else if(me){
-    // DB에서 내 행이 사라졌다면 다시 가입하도록 초기화
-    localStorage.removeItem("workbuddy_user");
-    localStorage.removeItem("workbuddy_name");
-    localStorage.removeItem("workbuddy_mode");
-    me = null;
-    showWho();
+    clearSession();
   }
 }
 
@@ -1295,7 +1218,7 @@ $("#survivalBtn").addEventListener("click", async()=>{
   try{
     await api(`/members?id=eq.${encodeURIComponent(me)}`,{
       method:"PATCH",
-      body:JSON.stringify({survival_message:text,survival_expires_at:expires,updated_at:new Date().toISOString()})
+      body:JSON.stringify({survival_message:text,survival_expires_at:expires})
     });
     sharedMeta.reactions[me]={key:expires,users:[]};
     await saveBoard();
@@ -1331,15 +1254,13 @@ $("#saveSettingsBtn").addEventListener("click",async()=>{
         lunch_start:$("#lunchStart")?.value||"12:00",
         lunch_end:$("#lunchEnd")?.value||"13:00",
         work_days:activeDays,
-        updated_at:new Date().toISOString()
+        day_schedules:schedules
       })
     });
     memberModes[me]=$("#activityType")?.value||"work";
     sharedMeta.customModes=sharedMeta.customModes||{};
     if(memberModes[me]==="custom") sharedMeta.customModes[me]=($("#settingsCustomMode")?.value||"").trim()||"기타중";
     else delete sharedMeta.customModes[me];
-    sharedMeta.daySchedules=sharedMeta.daySchedules||{};
-    sharedMeta.daySchedules[me]=schedules;
     localStorage.setItem("workbuddy_mode",memberModes[me]);
     await saveBoard();
     $("#settingsMsg").innerHTML='<div class="success">저장됐어요.</div>';
@@ -1369,12 +1290,14 @@ function redraw(){
   strokes.forEach(s=>{
     if(!s.points || s.points.length<1) return;
     ctx.beginPath();
-    ctx.strokeStyle=s.erase ? "#ffffff" : s.color;
+    ctx.globalCompositeOperation=s.erase ? "destination-out" : "source-over";
+    ctx.strokeStyle=s.color;
     ctx.lineWidth=s.erase ? 16 : 4;
     ctx.moveTo(s.points[0].x*r.width,s.points[0].y*r.height);
     s.points.slice(1).forEach(p=>ctx.lineTo(p.x*r.width,p.y*r.height));
     ctx.stroke();
   });
+  ctx.globalCompositeOperation="source-over";
 }
 function pos(e){ const r=canvas.getBoundingClientRect();
   const canvasDoc=canvas.ownerDocument;
@@ -1453,46 +1376,71 @@ async function loadBoard(){
 
 
 function weekStart(d=new Date()){ const x=new Date(d); const day=(x.getDay()+6)%7; x.setHours(0,0,0,0); x.setDate(x.getDate()-day); return x; }
-function scheduledWorkedMs(m,now=new Date()){
+function scheduleDate(m,date,part){
+  const sc=getDaySchedule(m,date.getDay());
+  const time=part==="lunch_start"?m.lunch_start:part==="lunch_end"?m.lunch_end:sc[part];
+  const minutes=minutesOf(time);
+  return new Date(date.getFullYear(),date.getMonth(),date.getDate(),Math.floor(minutes/60),minutes%60).getTime();
+}
+function effectiveAttendanceEnd(row,now=new Date()){
+  return row.ended_at ? new Date(row.ended_at).getTime()
+    : Math.min(now.getTime(),new Date(row.last_seen_at).getTime()+30000);
+}
+function attendanceMsFor(m,from,now,afterEnd=false){
   if(!m) return 0;
-  const ls=minutesOf(m.lunch_start),le=minutesOf(m.lunch_end),start=weekStart(now);
-  let total=0;
-  for(let i=0;i<7;i++){
-    const date=new Date(start);date.setDate(start.getDate()+i);
-    if(date>now) break;
-    const sc=getDaySchedule(m,date.getDay());
-    if(!sc.active) continue;
-    const a=minutesOf(sc.start),b=minutesOf(sc.end);
-    let endMin=b;
-    if(date.toDateString()===now.toDateString()) endMin=Math.min(b,nowMinutes());
-    if(endMin<=a) continue;
-    let mins=endMin-a;
-    mins-=Math.max(0,Math.min(endMin,le)-Math.max(a,ls));
-    total+=Math.max(0,mins)*60000;
+  return attendanceRows.filter(r=>r.member_id===m.id).reduce((total,r)=>{
+    const date=new Date(r.work_date+"T00:00:00");
+    const start=scheduleDate(m,date,"start"),end=scheduleDate(m,date,"end");
+    const a=Math.max(new Date(r.started_at).getTime(),from.getTime(),afterEnd?end:start);
+    const b=Math.min(effectiveAttendanceEnd(r,now),now.getTime(),afterEnd?Infinity:end);
+    let ms=Math.max(0,b-a);
+    if(!afterEnd && ms){
+      const ls=scheduleDate(m,date,"lunch_start"),le=scheduleDate(m,date,"lunch_end");
+      ms-=Math.max(0,Math.min(b,le)-Math.max(a,ls));
+    }
+    return total+Math.max(0,ms);
+  },0);
+}
+function scheduledWorkedMs(m,now=new Date()){ return attendanceMsFor(m,weekStart(now),now); }
+function overtimeMsFor(memberId,now=new Date(),from=weekStart(now)){
+  const m=lastMembers.find(x=>x.id===memberId);
+  const intervals=attendanceRows.filter(r=>r.member_id===memberId && m).map(r=>{
+    const date=new Date(r.work_date+"T00:00:00");
+    return [Math.max(new Date(r.started_at).getTime(),scheduleDate(m,date,"end"),from.getTime()),
+      Math.min(effectiveAttendanceEnd(r,now),now.getTime())];
+  });
+  overtimeRows.filter(r=>r.member_id===memberId).forEach(r=>intervals.push([
+    Math.max(new Date(r.started_at).getTime(),from.getTime()),
+    Math.min(r.ended_at?new Date(r.ended_at).getTime():now.getTime(),now.getTime())
+  ]));
+  intervals.sort((a,b)=>a[0]-b[0]);
+  let total=0,end=0;
+  for(const [a,b] of intervals){
+    if(b<=a) continue;
+    total+=Math.max(0,b-Math.max(a,end));
+    end=Math.max(end,b);
   }
   return total;
-}
-function overtimeMsFor(memberId, now=new Date()){
-  const start=weekStart(now); return overtimeRows.filter(r=>r.member_id===memberId&&new Date(r.started_at)>=start).reduce((sum,r)=>{ const a=new Date(r.started_at),b=r.ended_at?new Date(r.ended_at):now; return sum+Math.max(0,b-a); },0);
 }
 function updateWeeklyUI(members){
   if(members&&members.length) lastMembers=members;
   if(!me) return; const mine=(lastMembers||[]).find(x=>x.id===me); if(!mine) return; const total=scheduledWorkedMs(mine)+overtimeMsFor(me); const min=Math.floor(total/60000); $("#weeklyHours").textContent=`${Math.floor(min/60)}시간 ${String(min%60).padStart(2,"0")}분`; $("#legalWarning").style.display=total>40*3600000?"block":"none";
-  const active=activeOvertimeFor(me); if(active){ $("#overtimeLive").textContent=`야근 +${formatDurationMs(Date.now()-new Date(active.started_at).getTime())}`; $("#overtimeStartBtn").style.display="none"; $("#overtimeEndBtn").style.display="inline-block"; } else { $("#overtimeLive").textContent="야근 기록 없음"; $("#overtimeStartBtn").style.display="inline-block"; $("#overtimeEndBtn").style.display="none"; }
+  const active=activeOvertimeFor(me);
+  $("#overtimeLive").textContent=active?`야근 +${formatDurationMs(Date.now()-new Date(active.started_at).getTime())}`:"현재 야근 없음";
+  $("#overtimeEndBtn").style.display=activeAttendanceFor(me)?"inline-block":"none";
 }
 async function loadOvertime(){ overtimeRows=await api('/overtime?select=*&order=started_at.asc')||[]; return overtimeRows; }
-$("#memberManageTitle")?.addEventListener("click",()=>{ $("#memberManageBody")?.classList.toggle("open"); renderMemberManagerSafe(); });
-$("#deleteOthersBtn")?.addEventListener("click",deleteOthers);
+async function loadAttendance(){ attendanceRows=await api('/attendance?select=*&order=started_at.asc')||[]; return attendanceRows; }
 $("#weekTitle").addEventListener("click",()=>$("#weekBody").classList.toggle("open"));
-$("#overtimeStartBtn").addEventListener("click",async()=>{ if(!me)return showWho(); try{ await api('/overtime',{method:'POST',body:JSON.stringify({member_id:me,started_at:new Date().toISOString()})}); await loadAll(); }catch(e){$("#weekMsg").innerHTML='<div class="error">야근 시작 실패</div>';} });
-$("#overtimeEndBtn").addEventListener("click",async()=>{ const active=activeOvertimeFor(me); if(!active)return; try{ await api(`/overtime?id=eq.${active.id}`,{method:'PATCH',body:JSON.stringify({ended_at:new Date().toISOString()})}); await loadAll(); }catch(e){$("#weekMsg").innerHTML='<div class="error">야근 종료 실패</div>';} });
-$("#manualOtAdd").addEventListener("click",async()=>{ if(!me)return showWho(); const a=$("#manualOtStart").value,b=$("#manualOtEnd").value; if(!a||!b||b<=a){$("#weekMsg").innerHTML='<div class="error">시작/종료 시간을 확인해주세요.</div>';return;} const d=new Date(); const [ah,am]=a.split(':').map(Number),[bh,bm]=b.split(':').map(Number); const s1=new Date(d.getFullYear(),d.getMonth(),d.getDate(),ah,am),s2=new Date(d.getFullYear(),d.getMonth(),d.getDate(),bh,bm); try{ await api('/overtime',{method:'POST',body:JSON.stringify({member_id:me,started_at:s1.toISOString(),ended_at:s2.toISOString()})}); $("#weekMsg").innerHTML='<div class="success">추가됐어요.</div>'; await loadAll(); }catch(e){$("#weekMsg").innerHTML='<div class="error">추가 실패</div>';} });
+$("#overtimeEndBtn").addEventListener("click",clockOut);
+$("#manualOtAdd").addEventListener("click",async()=>{ if(!me)return showWho(); const a=$("#manualOtStart").value,b=$("#manualOtEnd").value; if(!a||!b||b<=a){$("#weekMsg").innerHTML='<div class="error">시작/종료 시간을 확인해주세요.</div>';return;} const d=new Date(); const [ah,am]=a.split(':').map(Number),[bh,bm]=b.split(':').map(Number); const s1=new Date(d.getFullYear(),d.getMonth(),d.getDate(),ah,am),s2=new Date(d.getFullYear(),d.getMonth(),d.getDate(),bh,bm); const workDate=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'); try{ await api('/overtime',{method:'POST',body:JSON.stringify({member_id:me,work_date:workDate,started_at:s1.toISOString(),ended_at:s2.toISOString()})}); $("#weekMsg").innerHTML='<div class="success">추가됐어요.</div>'; await loadAll(); }catch(e){$("#weekMsg").innerHTML='<div class="error">추가 실패</div>';} });
 async function loadAll(first=false){
   if(!me) return;
   let members=[];
   try{
     await loadBoard();
     await loadOvertime();
+    await loadAttendance();
     members=await api("/members?select=*&order=name.asc")||[];
     lastMembers=members;
     $("#connectionText").textContent=`${displayNameForMe()} · Supabase 연결됨`;
@@ -1507,6 +1455,7 @@ async function loadAll(first=false){
   try{
     const mine=members.find(x=>x.id===me&&!sharedMeta.deletedIds.includes(x.id));
     if(mine){localStorage.setItem("workbuddy_name",mine.name);fillSettings(mine);}
+    else clearSession();
   }catch(e){console.error("fillSettings",e);}
   try{updateWeeklyUI(members);}catch(e){console.error("weekly",e);}
 }
@@ -1518,11 +1467,19 @@ function startPolling(){
 async function heartbeat(){
   if(!me) return;
   try{
-    await api(`/members?id=eq.${encodeURIComponent(me)}`,{
-      method:"PATCH",
-      body:JSON.stringify({updated_at:new Date().toISOString()})
+    await api('/rpc/workbuddy_tick',{
+      method:'POST',body:'{}'
     });
+    await loadAttendance();
   }catch(e){}
+}
+async function clockOut(){
+  if(!me || !activeAttendanceFor(me)) return;
+  try{
+    await api('/rpc/workbuddy_clock_out',{method:'POST',body:'{}'});
+    await loadAll();
+    syncMiniOvertime();
+  }catch(e){ $("#weekMsg").innerHTML='<div class="error">퇴근 기록 실패</div>'; }
 }
 function startPresence(){
   clearInterval(presenceTimer);
@@ -1535,22 +1492,24 @@ document.addEventListener("visibilitychange",()=>{ if(!document.hidden) heartbea
 
 
 $("#deleteAccountBtn").addEventListener("click",async()=>{
-  if(!me) return; 
-  try{ await loadBoard(); if(!sharedMeta.deletedIds.includes(me)) sharedMeta.deletedIds.push(me); delete sharedMeta.reactions[me]; delete memberModes[me]; await saveBoard(); localStorage.removeItem("workbuddy_user"); localStorage.removeItem("workbuddy_name"); localStorage.removeItem("workbuddy_mode"); me=null; clearInterval(presenceTimer); showWho(); await loadBoard(); }catch(e){ $("#settingsMsg").innerHTML='<div class="error">계정 삭제 처리 실패</div>'; }
+  if(!me || !confirm("내 계정과 출퇴근 기록을 영구 삭제할까요?")) return;
+  try{ await api('/rpc/workbuddy_delete_account',{method:'POST',body:'{}'}); clearSession(); }
+  catch(e){ $("#settingsMsg").innerHTML='<div class="error">계정 삭제 처리 실패</div>'; }
 });
 
-$("#pipBtn").addEventListener("click", async()=>{
-  const msg = $("#survivalMsg");
-  try{
-    if(!("documentPictureInPicture" in window)){
-      throw new Error("이 Chrome에서는 미니창 기능을 지원하지 않아요.");
-    }
-
+function requestMiniWindow(){
+  if(!("documentPictureInPicture" in window)) return Promise.resolve(null);
+  if(documentPictureInPicture.window) return Promise.resolve(documentPictureInPicture.window);
+  return documentPictureInPicture.requestWindow({width:260,height:410}).catch(e=>{
+    console.warn("WorkBuddy PiP:",e);
+    return null;
+  });
+}
+function moveToMiniWindow(pipWindow){
+    if(!pipWindow || uiDoc===pipWindow.document) return;
     const app = document.querySelector(".app");
     const homeMarker = document.createComment("workbuddy-app-home");
     app.parentNode.insertBefore(homeMarker, app);
-
-    const pipWindow = await documentPictureInPicture.requestWindow({width:260,height:410});
 
     // 현재 페이지의 CSS만 복사하고, Netlify 페이지/툴바 자체를 다시 불러오지 않습니다.
     [...document.styleSheets].forEach(sheet=>{
@@ -1597,11 +1556,9 @@ $("#pipBtn").addEventListener("click", async()=>{
       fitCanvas();
     }, {once:true});
 
-    if(msg) msg.innerHTML="";
-  }catch(e){
-    console.warn("WorkBuddy PiP:", e);
-    if(msg) msg.innerHTML="";
-  }
+}
+$("#pipBtn").addEventListener("click", async()=>{
+  moveToMiniWindow(await requestMiniWindow());
 });
 
 
@@ -1629,7 +1586,7 @@ if(workbuddyApp){
 
 window.addEventListener("resize",fitCanvas);
 fitCanvas();
-loadBoard().then(()=>{ if(me) loadAll(true); });
+if(me) loadAll(true);
 startPolling();
 startPresence();
 weeklyTimer=setInterval(()=>{ if(me){ renderMembers(lastMembers); updateWeeklyUI(lastMembers); } },1000);
@@ -1638,51 +1595,17 @@ setInterval(()=>{ if(me) loadAll().catch(()=>{}); },60000);
 
 
 function todayScheduledWorkedMs(m,now=new Date()){
-  if(!m) return 0;
-  const sc=getDaySchedule(m,now.getDay());
-  if(!sc.active) return 0;
-  const a=minutesOf(sc.start),b=minutesOf(sc.end),ls=minutesOf(m.lunch_start),le=minutesOf(m.lunch_end);
-  const endMin=Math.min(b,nowMinutes());
-  if(endMin<=a) return 0;
-  let mins=endMin-a;
-  mins-=Math.max(0,Math.min(endMin,le)-Math.max(a,ls));
-  return Math.max(0,mins)*60000;
+  const start=new Date(now);start.setHours(0,0,0,0);
+  return attendanceMsFor(m,start,now);
 }
 function todayOvertimeMs(memberId, now=new Date()){
   const dayStart=new Date(now);
   dayStart.setHours(0,0,0,0);
-  return overtimeRows
-    .filter(r=>r.member_id===memberId && new Date(r.started_at)>=dayStart)
-    .reduce((sum,r)=>{
-      const a=new Date(r.started_at);
-      const b=r.ended_at?new Date(r.ended_at):now;
-      return sum+Math.max(0,b-a);
-    },0);
+  return overtimeMsFor(memberId,now,dayStart);
 }
 
 async function toggleMiniOvertime(){
-  if(!me) return showWho();
-  const active=activeOvertimeFor(me);
-  try{
-    if(active){
-      await api(`/overtime?id=eq.${active.id}`,{
-        method:"PATCH",
-        body:JSON.stringify({ended_at:new Date().toISOString()})
-      });
-    }else{
-      await api('/overtime',{
-        method:'POST',
-        body:JSON.stringify({member_id:me,started_at:new Date().toISOString()})
-      });
-    }
-    await loadOvertime();
-    updateWeeklyUI(lastMembers);
-    syncMiniOvertime();
-    renderMembers(lastMembers);
-  }catch(e){
-    const msg=$("#weekMsg");
-    if(msg) msg.innerHTML='<div class="error">야근 기록 실패</div>';
-  }
+  await clockOut();
 }
 
 $("#miniOvertimeBtn")?.addEventListener("click", toggleMiniOvertime);
@@ -1696,14 +1619,15 @@ function syncMiniOvertime(){
 
   const now=new Date();
   const active=activeOvertimeFor(me);
+  const shift=activeAttendanceFor(me);
 
   if(active){
-    miniBtn.textContent="야근 종료";
     miniElapsed.textContent=`야근 +${formatDurationMs(now-new Date(active.started_at).getTime())}`;
   }else{
-    miniBtn.textContent="야근 시작";
     miniElapsed.textContent="야근 +00:00:00";
   }
+  miniBtn.textContent=shift?"퇴근":"출근 대기";
+  miniBtn.disabled=!shift;
 
   const mine=(lastMembers||[]).find(x=>x.id===me);
   const todayTotal=todayScheduledWorkedMs(mine,now)+todayOvertimeMs(me,now);
@@ -1800,7 +1724,6 @@ setTimeout(syncMiniWeeklyFromFull,100);
 
 
 
-setInterval(()=>{ try{ renderMemberManagerSafe(); }catch(_){ } },1500);
 
 </script>
 </body>
